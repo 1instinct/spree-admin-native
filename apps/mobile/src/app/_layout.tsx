@@ -1,9 +1,3 @@
-import {
-  BricolageGrotesque_600SemiBold,
-  BricolageGrotesque_700Bold,
-} from '@expo-google-fonts/bricolage-grotesque';
-import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold } from '@expo-google-fonts/geist';
-import { GeistMono_400Regular, GeistMono_500Medium } from '@expo-google-fonts/geist-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,17 +10,19 @@ import { ApiProvider } from '@/trpc/trpc';
 
 SplashScreen.preventAutoHideAsync();
 
+// Import single weights by file: a font package's index pulls in every weight and italic.
+const COUNTER_FONTS = {
+  BricolageGrotesque_600SemiBold: require('@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf'),
+  BricolageGrotesque_700Bold: require('@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf'),
+  Geist_400Regular: require('@expo-google-fonts/geist/400Regular/Geist_400Regular.ttf'),
+  Geist_500Medium: require('@expo-google-fonts/geist/500Medium/Geist_500Medium.ttf'),
+  Geist_600SemiBold: require('@expo-google-fonts/geist/600SemiBold/Geist_600SemiBold.ttf'),
+  GeistMono_400Regular: require('@expo-google-fonts/geist-mono/400Regular/GeistMono_400Regular.ttf'),
+  GeistMono_500Medium: require('@expo-google-fonts/geist-mono/500Medium/GeistMono_500Medium.ttf'),
+};
+
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    BricolageGrotesque_600SemiBold,
-    BricolageGrotesque_700Bold,
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    GeistMono_400Regular,
-    GeistMono_500Medium,
-    ...fontAssets,
-  });
+  const [fontsLoaded] = useFonts({ ...COUNTER_FONTS, ...fontAssets });
   return (
     <AppThemeProvider theme={theme}>
       <SessionProvider>

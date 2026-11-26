@@ -16,5 +16,8 @@ export interface DistributionConfig {
   brandColor: string;
 }
 
-/** Font family name → asset (a `require('…ttf')` module id), loaded with expo-font at startup. */
+/**
+ * Font family name → asset, loaded with expo-font at startup. Require single weights by file
+ * (`@expo-google-fonts/x/500Medium/X_500Medium.ttf`); a font package index bundles every weight.
+ */
 export type FontAssets = Record<string, number>;
