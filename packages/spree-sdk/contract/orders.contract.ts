@@ -147,7 +147,8 @@ describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
       (o) => o.paymentStatus === 'paid' && o.fulfillments.some((f) => f.status === 'ready'),
     );
     if (!order) return skip('no paid order with a ready fulfillment');
-    const fulfillment = order.fulfillments.find((f) => f.status === 'ready')!;
+    const fulfillment = order.fulfillments.find((f) => f.status === 'ready');
+    if (!fulfillment) return skip('no ready fulfillment');
     const tracking = `CT${Date.now()}`;
     const after = await adapter.orders.ship(order, fulfillment, { tracking });
     const shipped = after.fulfillments.find((f) => f.id === fulfillment.id);
@@ -159,7 +160,8 @@ describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
     const orders = await candidates('unpaid');
     const order = orders.find((o) => o.status === 'placed' && o.payments.some((p) => p.status === 'pending'));
     if (!order) return skip('no order with a pending payment');
-    const payment = order.payments.find((p) => p.status === 'pending')!;
+    const payment = order.payments.find((p) => p.status === 'pending');
+    if (!payment) return skip('no pending payment');
     const after = await adapter.orders.capture(order, payment);
     expect(after.payments.find((p) => p.id === payment.id)?.status).toBe('completed');
   });
@@ -174,7 +176,8 @@ describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
         o.payments.some((p) => p.status === 'completed' && Number(p.amount.amount) >= 2),
     );
     if (!order) return skip('no order with a completed payment');
-    const payment = order.payments.find((p) => p.status === 'completed' && Number(p.amount.amount) >= 2)!;
+    const payment = order.payments.find((p) => p.status === 'completed' && Number(p.amount.amount) >= 2);
+    if (!payment) return skip('no completed payment');
     const after = await adapter.orders.refund(order, {
       payment,
       amount: '1.00',
