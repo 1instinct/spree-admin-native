@@ -34,17 +34,17 @@ tests against real Spree versions in CI; see [docs/compatibility.md](docs/compat
 
 ## Repository layout (target)
 
-| Path | What |
-| --- | --- |
-| `apps/mobile` | Expo app (iOS, Android, web) |
-| `apps/relay` | Optional self-hosted push / webhook relay |
-| `packages/domain` | Normalised commerce models (zod) |
-| `packages/spree-sdk` | Version-adaptive Spree client |
-| `packages/api` | tRPC router |
-| `packages/ui` | Design tokens and components |
-| `packages/extension-sdk` | Extension manifest, slots, Blocks schema |
-| `gems/spree_admin_native` | Optional Spree companion gem |
-| `distributions/default` | Brand, theme and config for the upstream app |
+| Path                      | What                                         |
+| ------------------------- | -------------------------------------------- |
+| `apps/mobile`             | Expo app (iOS, Android, web)                 |
+| `apps/relay`              | Optional self-hosted push / webhook relay    |
+| `packages/domain`         | Normalised commerce models (zod)             |
+| `packages/spree-sdk`      | Version-adaptive Spree client                |
+| `packages/api`            | tRPC router                                  |
+| `packages/ui`             | Design tokens and components                 |
+| `packages/extension-sdk`  | Extension manifest, slots, Blocks schema     |
+| `gems/spree_admin_native` | Optional Spree companion gem                 |
+| `distributions/default`   | Brand, theme and config for the upstream app |
 
 ## Forking for your brand
 

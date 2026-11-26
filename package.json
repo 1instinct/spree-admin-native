@@ -2,15 +2,25 @@
   "name": "spree-admin-native",
   "private": true,
   "packageManager": "pnpm@10.20.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "biome check .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "contract": "node scripts/contract.mjs",
     "spree:up": "node scripts/spree-up.mjs",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
+    "@changesets/cli": "^3.0.3",
+    "turbo": "^2.11.13",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.2"
   }
 }

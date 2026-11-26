@@ -34,7 +34,7 @@ pnpm contract --spree 4.2
 
 If something doesn't work with your Spree version, open a **Compatibility report** issue
 with your Spree version, installed Spree extensions and the capability shown in
-*More → About this store*.
+_More → About this store_.
 
 ## Code of conduct
 
