@@ -76,3 +76,10 @@ export function useSession(): SessionApi {
   if (!s) throw new Error('useSession must be used inside SessionProvider');
   return s;
 }
+
+/** Whether the connected store supports a capability (`orders.refund`, `promotions.write`…). */
+export function useCan(): (capability: string) => boolean {
+  const { state } = useSession();
+  const capabilities = state.store?.probe.capabilities;
+  return (capability: string) => !!capabilities?.includes(capability as never);
+}
