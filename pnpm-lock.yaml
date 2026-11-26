@@ -209,6 +209,9 @@ importers:
       '@spree-native/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: ^26.6.11
+        version: 26.6.11
 
   packages/ui:
     devDependencies:
