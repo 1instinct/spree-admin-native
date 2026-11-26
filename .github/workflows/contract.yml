@@ -1,0 +1,34 @@
+name: Contract
+# Runs the spree-sdk contract suite against real Spree stores in Docker and regenerates
+# docs/compatibility.md. Slow (builds Spree images), so it runs on adapter changes, weekly and on demand.
+on:
+  pull_request:
+    paths: [packages/spree-sdk/**, packages/domain/**, infra/spree/**]
+  schedule:
+    - cron: "41 6 * * 2"
+  workflow_dispatch:
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        spree: ["4.2", "6.0"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SPREE_IMAGE_REGISTRY: docker.io/library
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Start Spree ${{ matrix.spree }}
+        run: node scripts/spree-up.mjs ${{ matrix.spree }}
+      - name: Contract tests
+        run: pnpm contract --spree ${{ matrix.spree }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-results-${{ matrix.spree }}
+          path: contract-results/

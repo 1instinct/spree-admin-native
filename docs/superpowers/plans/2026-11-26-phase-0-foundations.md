@@ -21,6 +21,26 @@ Expo SDK 58, Docker Compose (Spree matrix).
 - On an iOS simulator, entering `http://localhost:3042` shows "Spree 4.2 · Platform API v2"
   and its capability list, signs in with the sample admin and shows 25 orders.
 
+## Status (updated 2026-11-26)
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| 1 Workspace tooling | Done | pnpm 10, Turborepo, Biome 2.6, Vitest 5, TS 5.9 (app uses Expo's TS 6) |
+| 2 Money | Done | bigint minor units, Intl formatting |
+| 3 Domain models | Done, revised | Order vocabulary changed to Spree 6's (`status`, `paymentStatus`, `fulfillmentStatus`, fulfillments) after reading `@spree/admin-sdk` 6.0.6; Spree 4 states map into it in the adapter |
+| 4 Docker matrix | In progress | Spree 4.2 on :3042 and Spree 6.0 on :3060 (`infra/spree`) |
+| 5 Transport | Done | Injected `fetch` instead of msw; same error kinds as BeeperNative |
+| 6 Capability probe | Done | Probes run in parallel; gem answer preferred (not probed first, to avoid an extra round trip). Admin v3 detected via unauthenticated `/api/v3/admin/auth/providers` |
+| 7 Auth | Partly done | OAuth password grant, client credentials, API key. Admin v3 JWT login waits on the 6.0 cookie/CSRF findings |
+| 8 Platform v2 orders | Written, verifying | Mapping is defensive until checked against 4.2 recordings |
+| 9 Admin v3 orders | Written, verifying | Typed against `@spree/admin-sdk` |
+| 10 Contract suite | Written | `pnpm contract --spree <version>`; generates `docs/compatibility.md` |
+| 11 Router | Done | `store.probe`, `store.signIn`, `store.current`, `orders.list`, `orders.get`; `unstable_localLink` proven in tests and in a Hermes bundle |
+| 12 Tokens | Done | Contrast checks in tests; no Tailwind preset yet (app uses StyleSheet + tokens) |
+| 13 App shell | Done | Expo SDK 58, Native Tabs; distribution identity is JSON (Expo's config loader can't require TS at runtime) |
+| 14 Connect flow | Done | RNTL 14 integration test (async `render`); Maestro flow still to do |
+| 15 Review | Not started | |
+
 ---
 
 ## Task 1: Workspace tooling
