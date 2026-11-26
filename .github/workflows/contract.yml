@@ -15,8 +15,6 @@ jobs:
         spree: ["4.2", "6.0"]
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      SPREE_IMAGE_REGISTRY: docker.io/library
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
