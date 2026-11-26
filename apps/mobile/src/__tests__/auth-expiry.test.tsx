@@ -60,6 +60,12 @@ describe('signed-out devices', () => {
   });
 });
 
+function Count() {
+  const trpc = useTRPC();
+  const q = useQuery(trpc.orders.list.queryOptions({}));
+  return <Text>{q.data ? `count ${q.data.totalCount}` : 'loading'}</Text>;
+}
+
 describe('switching stores', () => {
   it('keeps queries started on first mount and clears data when the store changes', async () => {
     const ok = (name: string): Session => ({
@@ -75,11 +81,6 @@ describe('switching stores', () => {
         },
       },
     });
-    function Count() {
-      const trpc = useTRPC();
-      const q = useQuery(trpc.orders.list.queryOptions({}));
-      return <Text>{q.data ? `count ${q.data.totalCount}` : 'loading'}</Text>;
-    }
     const view = await render(
       <ApiProvider session={ok('a')}>
         <Count />
