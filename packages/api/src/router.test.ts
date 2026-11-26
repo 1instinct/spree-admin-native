@@ -107,15 +107,22 @@ describe('appRouter', () => {
 });
 
 describe('store.signIn', () => {
-  const json = (status: number, body: unknown) =>
-    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json', ...headers },
+    });
 
-  it('signs in to a Platform v2 store with email and password', async () => {
+  it('signs in to Spree 6 with email and password and keeps the refresh cookie', async () => {
     const fetch = async (url: string) => {
       const path = new URL(url).pathname;
-      if (path === '/api/v2/platform/orders') return json(401, {});
-      if (path === '/spree_oauth/token')
-        return json(200, { access_token: 'a1', refresh_token: 'r1', expires_in: 7200, created_at: 1 });
+      if (path === '/api/v3/admin/orders') return json(401, { error: { code: 'authentication_required' } });
+      if (path === '/api/v3/admin/auth/login')
+        return json(
+          200,
+          { token: 'jwt1' },
+          { 'set-cookie': 'spree_admin_refresh_token=c1; path=/api/v3/admin/auth; httponly' },
+        );
       return json(404, {});
     };
     const res = await createCaller({ session: null, fetch }).store.signIn({
@@ -124,19 +131,39 @@ describe('store.signIn', () => {
       email: 'a@b.c',
       password: 'x',
     });
-    expect(res.probe.preferredApi).toBe('platform-v2');
-    expect(res.credential).toMatchObject({ method: 'oauthPassword', accessToken: 'a1' });
+    expect(res.probe.preferredApi).toBe('admin-v3');
+    expect(res.credential).toEqual({ method: 'adminJwt', accessToken: 'jwt1', refreshCookie: 'c1' });
   });
 
-  it('refuses an API key on a Platform v2 store with a clear message', async () => {
+  it('checks a Spree 4.2 API key with one authenticated read', async () => {
+    const fetch = async (url: string, init: { headers: Record<string, string> }) => {
+      const path = new URL(url).pathname;
+      if (path === '/api/v1/orders')
+        return init.headers['X-Spree-Token'] === 'good-key-123'
+          ? json(200, { orders: [], count: 0, current_page: 1, pages: 0 })
+          : json(401, { error: 'You must specify an API key.' });
+      return json(404, {});
+    };
+    const caller = createCaller({ session: null, fetch });
+    const ok = await caller.store.signIn({ method: 'spreeToken', url: 'shop.test', token: 'good-key-123' });
+    expect(ok.credential).toEqual({ method: 'spreeToken', token: 'good-key-123' });
+    await expect(
+      caller.store.signIn({ method: 'spreeToken', url: 'shop.test', token: 'bad-key-123' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('explains which method a store needs', async () => {
     const fetch = async (url: string) =>
-      new URL(url).pathname === '/api/v2/platform/orders' ? json(401, {}) : json(404, {});
+      new URL(url).pathname === '/api/v1/orders'
+        ? json(401, { error: 'You must specify an API key.' })
+        : json(404, {});
     await expect(
       createCaller({ session: null, fetch }).store.signIn({
-        method: 'apiKey',
+        method: 'password',
         url: 'shop.test',
-        apiKey: 'sk_12345678',
+        email: 'a@b.c',
+        password: 'x',
       }),
-    ).rejects.toMatchObject({ code: 'BAD_REQUEST', message: expect.stringMatching(/Spree 5.4/) });
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST', message: expect.stringMatching(/admin API key/) });
   });
 });

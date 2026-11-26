@@ -8,10 +8,21 @@ if (!existsSync(dir)) {
   console.error('No contract-results/. Run `pnpm contract --spree <version>` first.');
   process.exit(1);
 }
-const runs = readdirSync(dir)
-  .filter((f) => f.endsWith('.json'))
-  .map((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')))
-  .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+// Several runs per version (one per sign-in method, e.g. "6.0" and "6.0-jwt") merge into one
+// column; a failure in any run wins.
+const byVersion = new Map();
+for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+  const run = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+  const version = run.label.split('-')[0];
+  const merged = byVersion.get(version) ?? { label: version, family: run.family, results: {} };
+  for (const [cap, r] of Object.entries(run.results)) {
+    if (merged.results[cap] !== 'fail') merged.results[cap] = r;
+  }
+  byVersion.set(version, merged);
+}
+const runs = [...byVersion.values()].sort((a, b) =>
+  a.label.localeCompare(b.label, undefined, { numeric: true }),
+);
 
 const capabilities = [...new Set(runs.flatMap((r) => Object.keys(r.results)))].sort();
 const mark = { pass: '✅', fail: '❌' };
@@ -28,6 +39,15 @@ const lines = [
   ...capabilities.map((c) => `| \`${c}\` | ${runs.map((r) => mark[r.results[c]] ?? '–').join(' | ')} |`),
   '',
   '✅ proven by contract tests · ❌ failing · – not tested yet',
+  '',
+  '## Not in the matrix yet',
+  '',
+  '- **Spree 4.3**: same admin API as 4.2 (API v1); add a Docker image to prove it.',
+  '- **Spree 4.4 – 5.x (Platform API v2)**: the adapter exists (`packages/spree-sdk/src/adapters/platform-v2`)',
+  '  but no Docker store runs it yet, so nothing is proven.',
+  '- **Spree 5.4 – 5.x (Admin API v3)**: should match 6.0; add a 5.5 image to prove it.',
+  '',
+  'See `infra/spree/FINDINGS.md` for how each version behaves.',
   '',
 ];
 writeFileSync('docs/compatibility.md', lines.join('\n'));

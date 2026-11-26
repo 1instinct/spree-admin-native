@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import type { Order } from '@spree-native/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAdapter } from '../src/adapters';
+import type { SessionAuth } from '../src/auth';
 import { probeStore } from '../src/capabilities/probe';
 import type { SpreeAdapter } from '../src/ports';
 import { baseTransport, enabled, env, results, signIn } from './env';
@@ -22,12 +23,14 @@ function proves(capability: string, name: string, fn: () => Promise<void>) {
 
 describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
   let adapter: SpreeAdapter;
+  let auth: SessionAuth;
   let all: Order[] = [];
 
   beforeAll(async () => {
     const probe = await probeStore({ baseUrl: env.url, timeoutMs: 10_000 });
     const transport = baseTransport();
-    adapter = createAdapter(env.family ?? probe.preferredApi, transport.withAuth(await signIn(transport)));
+    auth = await signIn(transport);
+    adapter = createAdapter(env.family ?? probe.preferredApi, transport.withAuth(auth));
   });
 
   afterAll(() => {
@@ -42,6 +45,14 @@ describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
   proves('store.probe', 'detects the expected API family', async () => {
     const probe = await probeStore({ baseUrl: env.url, timeoutMs: 10_000 });
     if (env.family) expect(probe.preferredApi).toBe(env.family);
+  });
+
+  proves(`auth.${process.env.SPREE_EMAIL ? 'password' : 'key'}`, 'signs in and refreshes', async () => {
+    expect(auth.serialize().method).toBeTruthy();
+    if (auth.refresh) {
+      await auth.refresh();
+      await adapter.orders.list({ filter: 'all', perPage: 1 });
+    }
   });
 
   proves('orders.read', 'lists placed orders as valid domain orders', async () => {

@@ -10,10 +10,18 @@ export interface ProbeOptions {
   timeoutMs?: number;
 }
 
+/*
+ * Fingerprints, all observed live (infra/spree/FINDINGS.md §c). Spree 4.x answers unknown
+ * /api/* paths with a 301 to /api/v1/<path>.json, which 404s; following it is fine because
+ * we only count 200/401/403 with the right body as "exists".
+ */
 const GEM_PATH = '/api/admin_native/v1/capabilities';
+/** Spree 5.4+/6: 401 `{"error":{"code":"authentication_required"}}`. */
+const ADMIN_V3_PATH = '/api/v3/admin/orders';
+/** Spree 4.4–5.x: 401 from Doorkeeper. */
 const PLATFORM_V2_PATH = '/api/v2/platform/orders';
-/** Unauthenticated on Spree 5.5+ / 6: lists sign-in providers. */
-const ADMIN_V3_PATH = '/api/v3/admin/auth/providers';
+/** Spree 4.x: 401 `{"error":"You must specify an API key."}`. */
+const API_V1_PATH = '/api/v1/orders';
 const STOREFRONT_V2_STORE_PATH = '/api/v2/storefront/store';
 
 type Outcome = { status: number; data: unknown } | { error: unknown };
@@ -29,8 +37,15 @@ async function attempt(t: Transport, path: string, timeoutMs: number): Promise<O
 }
 
 const statusOf = (o: Outcome) => ('status' in o ? o.status : 0);
-/** The route exists: it answered, even if only to say "not authorised". */
-const exists = (o: Outcome) => [200, 401, 403].includes(statusOf(o));
+const bodyOf = (o: Outcome) => ('data' in o ? o.data : null);
+/** The route exists: it answered, even if only to say "not authorised", with a JSON body. */
+const exists = (o: Outcome, looksRight: (body: unknown) => boolean = isRecord) =>
+  [200, 401, 403].includes(statusOf(o)) && looksRight(bodyOf(o));
+
+/** API v1's own 401 wording, so an unrelated app's 401 isn't mistaken for Spree. */
+const isV1Body = (b: unknown) =>
+  isRecord(b) && (Array.isArray(b.orders) || (typeof b.error === 'string' && /api key/i.test(b.error)));
+const isV3Body = (b: unknown) => isRecord(b) && (Array.isArray(b.data) || isRecord(b.error));
 
 interface GemPayload {
   spree_version?: string;
@@ -54,7 +69,7 @@ function storefrontStoreInfo(data: unknown): { name: string | null; currency: st
 
 /**
  * Work out what a store can do. Runs every probe in parallel with a short timeout, prefers
- * the companion gem's answer, then Admin API v3, then Platform API v2.
+ * the companion gem's answer, then Admin API v3, then Platform API v2, then API v1.
  */
 export async function probeStore(options: ProbeOptions): Promise<StoreProbe> {
   const timeoutMs = options.timeoutMs ?? 4000;
@@ -62,11 +77,11 @@ export async function probeStore(options: ProbeOptions): Promise<StoreProbe> {
   if (options.fetch) transportOptions.fetch = options.fetch;
   const t = createTransport(transportOptions);
 
-  const [gem, adminV3, platformV2, storefront] = (await Promise.all(
-    [GEM_PATH, ADMIN_V3_PATH, PLATFORM_V2_PATH, STOREFRONT_V2_STORE_PATH].map((p) =>
+  const [gem, adminV3, platformV2, apiV1, storefront] = (await Promise.all(
+    [GEM_PATH, ADMIN_V3_PATH, PLATFORM_V2_PATH, API_V1_PATH, STOREFRONT_V2_STORE_PATH].map((p) =>
       attempt(t, p, timeoutMs),
     ),
-  )) as [Outcome, Outcome, Outcome, Outcome];
+  )) as [Outcome, Outcome, Outcome, Outcome, Outcome];
 
   const probedAt = new Date().toISOString();
   const info = storefrontStoreInfo(
@@ -75,11 +90,12 @@ export async function probeStore(options: ProbeOptions): Promise<StoreProbe> {
 
   if ('data' in gem && gem.status === 200 && isRecord(gem.data)) {
     const g = gem.data as GemPayload;
-    const families = g.api_families?.length ? g.api_families : ['platform-v2' as const];
+    const families = g.api_families?.length ? g.api_families : ['api-v1' as const];
     return {
       baseUrl: t.baseUrl,
       apiFamilies: families,
-      preferredApi: families.includes('admin-v3') ? 'admin-v3' : 'platform-v2',
+      preferredApi:
+        (['admin-v3', 'platform-v2', 'api-v1'] as const).find((f) => families.includes(f)) ?? 'api-v1',
       capabilities: (g.capabilities ?? []) as Capability[],
       authMethods: g.auth_methods ?? ['password', 'pairing'],
       storeName: g.store?.name ?? info.name,
@@ -91,11 +107,12 @@ export async function probeStore(options: ProbeOptions): Promise<StoreProbe> {
   }
 
   const apiFamilies: ApiFamily[] = [];
-  if (exists(adminV3)) apiFamilies.push('admin-v3');
+  if (exists(adminV3, isV3Body)) apiFamilies.push('admin-v3');
   if (exists(platformV2)) apiFamilies.push('platform-v2');
+  if (exists(apiV1, isV1Body)) apiFamilies.push('api-v1');
 
   if (apiFamilies.length === 0) {
-    const all = [gem, adminV3, platformV2, storefront];
+    const all = [gem, adminV3, platformV2, apiV1, storefront];
     const noResponse = all.every((o) => 'error' in o);
     if (noResponse) {
       const first = all.find((o): o is { error: unknown } => 'error' in o)?.error;

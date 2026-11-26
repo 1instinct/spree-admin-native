@@ -12,8 +12,9 @@ import { distribution } from '@/distribution';
 import { useTRPC } from '@/trpc/trpc';
 
 const API_LABEL: Record<StoreProbe['preferredApi'], string> = {
-  'platform-v2': 'Platform API v2 · Spree 4.2–5.x',
-  'admin-v3': 'Admin API v3 · Spree 5.4+',
+  'api-v1': 'API v1 · Spree 4.2–4.3',
+  'platform-v2': 'Platform API · Spree 4.4–5.x',
+  'admin-v3': 'Admin API · Spree 5.4+',
 };
 
 export default function ConnectScreen() {
@@ -80,7 +81,7 @@ export default function ConnectScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/sign-in',
-                      params: { url: result.baseUrl, api: result.preferredApi },
+                      params: { url: result.baseUrl, methods: result.authMethods.join(',') },
                     })
                   }
                 />

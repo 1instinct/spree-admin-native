@@ -6,6 +6,16 @@ import type { ApiFamily, AuthMethod, Capability } from './types';
  * version; keep these conservative.
  */
 export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
+  // Routes confirmed on 4.2.7 (FINDINGS.md §b). No refunds: v1 only has payments/:id/credit.
+  'api-v1': [
+    'orders.read',
+    'orders.cancel',
+    'orders.capture',
+    'shipments.ship',
+    'inventory.adjust',
+    'products.read',
+    'customers.read',
+  ],
   'platform-v2': [
     'orders.read',
     'orders.cancel',
@@ -15,6 +25,7 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
     'inventory.adjust',
     'customers.read',
     'promotions.read',
+    'webhooks.manage',
   ],
   'admin-v3': [
     'orders.read',
@@ -39,6 +50,9 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
 };
 
 export const FAMILY_AUTH: Record<ApiFamily, readonly AuthMethod[]> = {
-  'platform-v2': ['password', 'oauthClient'],
+  // 4.2 has no grant that reaches admin data; the user's API key is the only way (FINDINGS.md §a).
+  'api-v1': ['spreeToken'],
+  // Platform v2 needs a token bound to an OAuth application with the admin scope.
+  'platform-v2': ['oauthClient'],
   'admin-v3': ['password', 'apiKey'],
 };

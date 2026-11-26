@@ -104,3 +104,79 @@ describe('restoreAuth', () => {
     expect(await pw.headers()).toEqual({ Authorization: 'Bearer a' });
   });
 });
+
+describe('spreeTokenAuth (API v1)', () => {
+  it('sends X-Spree-Token', async () => {
+    const { spreeTokenAuth } = await import('./index');
+    expect(await spreeTokenAuth('abc').headers()).toEqual({ 'X-Spree-Token': 'abc' });
+  });
+});
+
+describe('adminJwt (Admin API v3)', () => {
+  const login = (token: string, cookie: string) =>
+    new Response(JSON.stringify({ token, user: { email: 'admin@example.com' } }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'set-cookie': `spree_admin_refresh_token=${cookie}; path=/api/v3/admin/auth; expires=Sat, 26 Dec 2026 13:45:57 GMT; httponly; samesite=lax`,
+      },
+    });
+
+  it('logs in, keeps the refresh cookie and replays it on refresh', async () => {
+    const { adminJwt } = await import('./index');
+    const seen: { url: string; headers: Record<string, string>; credentials?: string }[] = [];
+    const replies = [login('jwt1', 'c1'), login('jwt2', 'c2')];
+    const fetch: FetchLike = async (url, init) => {
+      seen.push({
+        url,
+        headers: init.headers,
+        ...(init.credentials ? { credentials: init.credentials } : {}),
+      });
+      return replies.shift() as Response;
+    };
+    const t = createTransport({ baseUrl: 'http://localhost:3060', fetch });
+    const onChange = vi.fn();
+    const auth = await adminJwt.signIn(t, { email: 'admin@example.com', password: 'spree123' }, { onChange });
+    expect(seen[0]).toMatchObject({
+      url: 'http://localhost:3060/api/v3/admin/auth/login',
+      credentials: 'include',
+    });
+    expect(auth.serialize()).toEqual({ method: 'adminJwt', accessToken: 'jwt1', refreshCookie: 'c1' });
+
+    await auth.refresh?.();
+    expect(seen[1]?.url).toBe('http://localhost:3060/api/v3/admin/auth/refresh');
+    expect(seen[1]?.headers.Cookie).toBe('spree_admin_refresh_token=c1');
+    expect(await auth.headers()).toEqual({ Authorization: 'Bearer jwt2' });
+    expect(onChange).toHaveBeenCalledWith({ method: 'adminJwt', accessToken: 'jwt2', refreshCookie: 'c2' });
+  });
+
+  it('shares one refresh between concurrent callers (the cookie rotates)', async () => {
+    const { adminJwt } = await import('./index');
+    let refreshes = 0;
+    const fetch: FetchLike = async (url) => {
+      if (url.endsWith('/refresh')) refreshes++;
+      return login(`jwt${refreshes}`, `c${refreshes}`);
+    };
+    const t = createTransport({ baseUrl: 'http://localhost:3060', fetch });
+    const auth = adminJwt.restore(t, { method: 'adminJwt', accessToken: 'old', refreshCookie: 'c0' });
+    await Promise.all([auth.refresh?.(), auth.refresh?.(), auth.refresh?.()]);
+    expect(refreshes).toBe(1);
+  });
+
+  it('says the password is wrong on 401', async () => {
+    const { adminJwt } = await import('./index');
+    const fetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({ error: { code: 'authentication_failed', message: 'Invalid email or password' } }),
+        {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    const t = createTransport({ baseUrl: 'http://localhost:3060', fetch });
+    await expect(adminJwt.signIn(t, { email: 'a@b.c', password: 'x' })).rejects.toMatchObject({
+      kind: 'auth',
+      message: 'Email or password is incorrect.',
+    });
+  });
+});

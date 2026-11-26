@@ -38,6 +38,8 @@ export interface TransportRequest {
   auth?: 'default' | 'none';
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Overrides the transport default (e.g. send the Admin v3 refresh cookie). */
+  credentials?: FetchInit['credentials'];
 }
 
 export interface TransportResponse<T> {
@@ -93,7 +95,8 @@ export function createTransport(options: TransportOptions): Transport {
     try {
       const init: FetchInit = { method: req.method ?? 'GET', headers, signal: controller.signal };
       if (body !== undefined) init.body = body;
-      if (options.credentials) init.credentials = options.credentials;
+      const credentials = req.credentials ?? options.credentials;
+      if (credentials) init.credentials = credentials;
       res = await doFetch(url, init);
     } catch (cause) {
       if (timedOut) throw new SpreeError({ kind: 'timeout', status: 0, cause });

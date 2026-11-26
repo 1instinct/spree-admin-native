@@ -38,10 +38,13 @@ describe('Order schema', () => {
 });
 
 describe('SpreeNumber', () => {
-  it.each(['R482913057', 'H38120471', 'P7K2M4ZD', 'RA123456789'])('accepts %s', (n) => {
-    expect(SpreeNumber.parse(n)).toBe(n);
-  });
-  it.each(['r123', 'R12', '', '#R123456'])('rejects %s', (n) => {
+  it.each(['R482913057', 'H38120471', 'P7K2M4ZD', 'RA123456789', 'R1029', 'R1029-F1', 'R1029-P1'])(
+    'accepts %s',
+    (n) => {
+      expect(SpreeNumber.parse(n)).toBe(n);
+    },
+  );
+  it.each(['r123', 'R12', '', '#R123456', 'R1029-', 'R1029-f1'])('rejects %s', (n) => {
     expect(() => SpreeNumber.parse(n)).toThrow();
   });
 });

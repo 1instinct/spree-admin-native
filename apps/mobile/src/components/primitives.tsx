@@ -38,7 +38,10 @@ export function MoneyText({
 /** Spree number with its prefix as a small inverted glyph: [R]482913057. Long-press to copy comes in Phase 1. */
 export function SpreeNumberText({ value }: { value: string }) {
   const { colors, fonts } = useTheme();
-  const prefix = /^[A-Z]{1,2}/.exec(value)?.[0] ?? '';
+  // Spree 6 numbers children after the order (R1029-F1): show the child's letter as the glyph.
+  const child = /^(.*)-([A-Z])(\d*)$/.exec(value);
+  const prefix = child ? (child[2] ?? '') : (/^[A-Z]{1,2}/.exec(value)?.[0] ?? '');
+  const rest = child ? `${child[1]}-${child[2]}${child[3]}` : value.slice(prefix.length);
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -52,7 +55,7 @@ export function SpreeNumberText({ value }: { value: string }) {
         </Text>
       </View>
       <Text font="monoMedium" size="footnote">
-        {value.slice(prefix.length)}
+        {rest}
       </Text>
     </View>
   );

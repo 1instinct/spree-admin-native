@@ -1,12 +1,20 @@
-export type ApiFamily = 'platform-v2' | 'admin-v3';
+/**
+ * Which admin API a store speaks (infra/spree/FINDINGS.md):
+ * - `api-v1`: legacy REST API, Spree 4.2–4.3 (and still present later in 4.x)
+ * - `platform-v2`: Platform API, Spree 4.4–5.x (orders arrived in 4.4.0)
+ * - `admin-v3`: Admin API, Spree 5.4+ and 6.x
+ */
+export type ApiFamily = 'api-v1' | 'platform-v2' | 'admin-v3';
 
 export type AuthMethod =
-  /** Email + password: OAuth2 password grant (Platform v2) or admin JWT login (Admin v3). */
+  /** Email + password: admin JWT login (Admin v3). */
   | 'password'
-  /** OAuth application client id + secret (Platform v2 client credentials). */
+  /** OAuth application client id + secret (Platform v2 client credentials, Spree 4.3+). */
   | 'oauthClient'
-  /** Secret Admin API key (Admin v3). */
+  /** Secret Admin API key `sk_…` (Admin v3). */
   | 'apiKey'
+  /** A user's Spree API key, sent as X-Spree-Token (API v1). */
+  | 'spreeToken'
   /** QR pairing through the companion gem. */
   | 'pairing';
 

@@ -1,5 +1,6 @@
 import type { PaginatedResponse, Order as V3Order } from '@spree/admin-sdk';
 import type { OrderListFilter, Page } from '@spree-native/domain';
+import { SpreeError } from '../../errors';
 import type { ListOrdersParams, OrdersPort } from '../../ports';
 import type { QueryObject } from '../../query';
 import type { Transport } from '../../transport';
@@ -53,6 +54,17 @@ export function adminV3Orders(transport: Transport): OrdersPort {
     },
 
     async get(idOrNumber: string) {
+      // Spree 6 finds orders by prefixed id (`or_…`) only; look order numbers up through the list filter.
+      if (!idOrNumber.includes('_')) {
+        const res = await transport.request<PaginatedResponse<V3Order>>({
+          path: BASE,
+          query: { q: { number_eq: idOrNumber }, limit: 1, expand: EXPAND },
+        });
+        const [order] = res.data.data;
+        if (!order)
+          throw new SpreeError({ kind: 'notFound', status: 404, message: `Order ${idOrNumber} not found.` });
+        return mapOrder(order);
+      }
       const res = await transport.request<V3Order>({
         path: `${BASE}/${encodeURIComponent(idOrNumber)}`,
         query: { expand: EXPAND },

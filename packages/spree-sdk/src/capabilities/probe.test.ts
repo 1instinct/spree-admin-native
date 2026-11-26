@@ -5,10 +5,8 @@ import { probeStore } from './probe';
 type Routes = Record<string, { status: number; body?: unknown } | 'hang' | 'throw'>;
 
 function routes(map: Routes) {
-  const seen: string[] = [];
   const fetch: FetchLike = async (url, init) => {
     const path = new URL(url).pathname;
-    seen.push(path);
     const r = map[path] ?? { status: 404, body: { error: 'Not found' } };
     if (r === 'throw') throw new TypeError('Network request failed');
     if (r === 'hang')
@@ -20,21 +18,32 @@ function routes(map: Routes) {
       headers: { 'content-type': 'application/json' },
     });
   };
-  return { fetch, seen };
+  return { fetch };
 }
+
+/** Exactly what Spree 4.2.7 and 6.0.6 answered (infra/spree/FINDINGS.md §c), after redirects. */
+const SPREE_42: Routes = {
+  '/api/v1/orders': { status: 401, body: { error: 'You must specify an API key.' } },
+};
+const SPREE_60: Routes = {
+  '/api/v3/admin/orders': {
+    status: 401,
+    body: { error: { code: 'authentication_required', message: 'Authentication required' } },
+  },
+};
 
 describe('probeStore', () => {
   it('trusts the companion gem over API probes when present', async () => {
     const { fetch } = routes({
-      '/api/v2/platform/orders': { status: 401 },
+      ...SPREE_42,
       '/api/admin_native/v1/capabilities': {
         status: 200,
         body: {
           spree_version: '4.2.5',
           gem_version: '0.1.0',
-          api_families: ['platform-v2'],
+          api_families: ['api-v1'],
           capabilities: ['orders.read', 'notifications.push', 'beeper.moderation'],
-          auth_methods: ['password', 'pairing'],
+          auth_methods: ['spreeToken', 'pairing'],
           store: { name: 'Beeper', currency: 'USD' },
         },
       },
@@ -42,85 +51,80 @@ describe('probeStore', () => {
     const probe = await probeStore({ baseUrl: 'admin.beeper.test', fetch });
     expect(probe).toMatchObject({
       baseUrl: 'https://admin.beeper.test',
-      preferredApi: 'platform-v2',
+      preferredApi: 'api-v1',
       spreeVersion: '4.2.5',
       gem: { version: '0.1.0' },
       storeName: 'Beeper',
-      authMethods: ['password', 'pairing'],
+      authMethods: ['spreeToken', 'pairing'],
     });
     expect(probe.capabilities).toContain('beeper.moderation');
   });
 
-  it('detects a Spree 4.2-style store from Platform API v2', async () => {
-    const { fetch } = routes({
-      '/api/v2/platform/orders': { status: 401, body: { error: 'The access token is invalid' } },
-      '/api/v2/storefront/store': {
-        status: 200,
-        body: { data: { attributes: { name: 'Northwind', default_currency: 'USD' } } },
-      },
-    });
-    const probe = await probeStore({ baseUrl: 'http://localhost:3042', fetch });
-    expect(probe.apiFamilies).toEqual(['platform-v2']);
-    expect(probe.preferredApi).toBe('platform-v2');
-    expect(probe.storeName).toBe('Northwind');
+  it('detects Spree 4.2 from API v1 and asks for an API key', async () => {
+    const probe = await probeStore({ baseUrl: 'http://localhost:3042', fetch: routes(SPREE_42).fetch });
+    expect(probe.apiFamilies).toEqual(['api-v1']);
+    expect(probe.authMethods).toEqual(['spreeToken']);
     expect(probe.capabilities).toContain('orders.read');
-    expect(probe.capabilities).not.toContain('analytics.summary');
-    expect(probe.authMethods).toEqual(['password', 'oauthClient']);
-    expect(probe.gem).toBeNull();
+    expect(probe.capabilities).not.toContain('orders.refund');
   });
 
-  it('detects a Spree 6-style store from Admin API v3 auth providers', async () => {
+  it('prefers Platform v2 on Spree 4.4–5.x, where API v1 also answers', async () => {
     const { fetch } = routes({
-      '/api/v3/admin/auth/providers': { status: 200, body: { data: [{ id: 'email', name: 'Email' }] } },
-      '/api/v3/admin/orders': { status: 401, body: {} },
+      ...SPREE_42,
+      '/api/v2/platform/orders': { status: 401, body: { error: 'invalid_token' } },
     });
-    const probe = await probeStore({ baseUrl: 'http://localhost:3060', fetch });
+    const probe = await probeStore({ baseUrl: 'https://shop.test', fetch });
+    expect(probe.apiFamilies).toEqual(['platform-v2', 'api-v1']);
+    expect(probe.preferredApi).toBe('platform-v2');
+    expect(probe.authMethods).toEqual(['oauthClient']);
+  });
+
+  it('detects Spree 6 from Admin API v3', async () => {
+    const probe = await probeStore({ baseUrl: 'http://localhost:3060', fetch: routes(SPREE_60).fetch });
     expect(probe.apiFamilies).toEqual(['admin-v3']);
-    expect(probe.preferredApi).toBe('admin-v3');
     expect(probe.capabilities).toEqual(
-      expect.arrayContaining(['orders.read', 'webhooks.manage', 'analytics.summary']),
+      expect.arrayContaining(['orders.read', 'orders.refund', 'webhooks.manage']),
     );
     expect(probe.authMethods).toEqual(['password', 'apiKey']);
   });
 
-  it('prefers Admin API v3 when both families exist (5.4+ with the legacy v2 gem)', async () => {
-    const { fetch } = routes({
-      '/api/v2/platform/orders': { status: 401 },
-      '/api/v3/admin/auth/providers': { status: 200, body: { data: [] } },
-    });
-    const probe = await probeStore({ baseUrl: 'https://shop.test', fetch });
-    expect(probe.apiFamilies).toEqual(['admin-v3', 'platform-v2']);
-    expect(probe.preferredApi).toBe('admin-v3');
-  });
-
-  it('says "not Spree" when no API answers', async () => {
-    const { fetch } = routes({});
-    await expect(probeStore({ baseUrl: 'https://example.com', fetch })).rejects.toMatchObject({
+  it('ignores a 401 from an app that is not Spree', async () => {
+    const { fetch } = routes({ '/api/v1/orders': { status: 401, body: { message: 'Unauthorized' } } });
+    await expect(probeStore({ baseUrl: 'https://other.test', fetch })).rejects.toMatchObject({
       kind: 'notSpree',
     });
   });
 
+  it('says "not Spree" when no API answers', async () => {
+    await expect(
+      probeStore({ baseUrl: 'https://example.com', fetch: routes({}).fetch }),
+    ).rejects.toMatchObject({ kind: 'notSpree' });
+  });
+
   it('reports network failures as network errors, not "not Spree"', async () => {
-    const { fetch } = routes({
-      '/api/admin_native/v1/capabilities': 'throw',
-      '/api/v2/platform/orders': 'throw',
-      '/api/v3/admin/auth/providers': 'throw',
-      '/api/v2/storefront/store': 'throw',
-    });
-    await expect(probeStore({ baseUrl: 'https://offline.test', fetch })).rejects.toMatchObject({
-      kind: 'network',
-    });
+    const all: Routes = Object.fromEntries(
+      [
+        '/api/admin_native/v1/capabilities',
+        '/api/v3/admin/orders',
+        '/api/v2/platform/orders',
+        '/api/v1/orders',
+        '/api/v2/storefront/store',
+      ].map((p) => [p, 'throw' as const]),
+    );
+    await expect(
+      probeStore({ baseUrl: 'https://offline.test', fetch: routes(all).fetch }),
+    ).rejects.toMatchObject({ kind: 'network' });
   });
 
   it('finishes within the time budget when a probe hangs', async () => {
     const { fetch } = routes({
+      ...SPREE_42,
       '/api/admin_native/v1/capabilities': 'hang',
-      '/api/v2/platform/orders': { status: 401 },
-      '/api/v3/admin/auth/providers': 'hang',
+      '/api/v3/admin/orders': 'hang',
     });
     const started = Date.now();
     const probe = await probeStore({ baseUrl: 'https://slow.test', fetch, timeoutMs: 100 });
     expect(Date.now() - started).toBeLessThan(1000);
-    expect(probe.preferredApi).toBe('platform-v2');
+    expect(probe.preferredApi).toBe('api-v1');
   });
 });

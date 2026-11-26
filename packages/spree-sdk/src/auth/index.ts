@@ -1,8 +1,10 @@
 import type { Transport } from '../transport';
-import { apiKeyAuth } from './apiKey';
+import { adminJwt } from './adminJwt';
+import { apiKeyAuth, spreeTokenAuth } from './apiKey';
 import { oauthClientCredentials, oauthPasswordGrant } from './oauth';
 import type { SessionAuth, SignInOptions, StoredCredential } from './types';
 
+export * from './adminJwt';
 export * from './apiKey';
 export * from './oauth';
 export * from './types';
@@ -20,11 +22,9 @@ export function restoreAuth(
       return oauthClientCredentials.restore(transport, stored, options);
     case 'apiKey':
       return apiKeyAuth(stored.apiKey);
+    case 'spreeToken':
+      return spreeTokenAuth(stored.token);
     case 'adminJwt':
-      // Admin API v3 JWT refresh lands with the Spree 6 findings (cookie + CSRF); until then, sign in again on 401.
-      return {
-        headers: async () => ({ Authorization: `Bearer ${stored.accessToken}` }),
-        serialize: () => stored,
-      };
+      return adminJwt.restore(transport, stored, options);
   }
 }

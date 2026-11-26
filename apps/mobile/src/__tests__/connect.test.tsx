@@ -32,7 +32,7 @@ describe('Connect Store', () => {
 
   it('probes a Spree 4.2-style store and shows what it supports', async () => {
     mockFetch({
-      '/api/v2/platform/orders': { status: 401 },
+      '/api/v1/orders': { status: 401, body: { error: 'You must specify an API key.' } },
       '/api/v2/storefront/store': {
         status: 200,
         body: { data: { attributes: { name: 'Northwind Supply', default_currency: 'USD' } } },
@@ -43,14 +43,14 @@ describe('Connect Store', () => {
     await fireEvent.press(screen.getByText('Check store'));
 
     expect(await screen.findByText('Northwind Supply')).toBeTruthy();
-    expect(screen.getByText('Platform API v2 · Spree 4.2–5.x')).toBeTruthy();
+    expect(screen.getByText('API v1 · Spree 4.2–4.3')).toBeTruthy();
     expect(screen.getByLabelText('View orders: available')).toBeTruthy();
     expect(screen.getByLabelText('Refund: not available')).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Continue'));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/sign-in',
-      params: { url: 'https://northwind.test', api: 'platform-v2' },
+      params: { url: 'https://northwind.test', methods: 'spreeToken' },
     });
   });
 

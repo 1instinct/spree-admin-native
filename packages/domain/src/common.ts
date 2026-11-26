@@ -5,12 +5,13 @@ export const Id = z.string().min(1);
 export type Id = z.infer<typeof Id>;
 
 /**
- * Spree document numbers: orders `R123456789`, shipments `H12345678`, payments `P7K2M4ZD`,
- * return authorizations `RA123…`. Upper-case prefix then upper-case alphanumerics.
+ * Spree document numbers. Spree 4/5: orders `R123456789`, shipments `H12345678`, payments
+ * `P7K2M4ZD`, return authorizations `RA123…`. Spree 6 numbers children after their order:
+ * `R1029-F1` (fulfillment), `R1029-P1` (payment).
  */
 export const SpreeNumber = z
   .string()
-  .regex(/^[A-Z]{1,2}[A-Z0-9]{4,}$/, 'Expected a Spree number like R123456789');
+  .regex(/^[A-Z]{1,2}[A-Z0-9]{3,}(-[A-Z][A-Z0-9]*)?$/, 'Expected a Spree number like R123456789');
 
 export const IsoDateTime = z.iso.datetime({ offset: true });
 

@@ -56,15 +56,21 @@ function bearer(token: string | null): Record<string, string> {
 export const oauthPasswordGrant = {
   async signIn(
     transport: Transport,
-    creds: { email: string; password: string },
+    creds: { email: string; password: string; clientId?: string; clientSecret?: string },
     options: SignInOptions = {},
   ): Promise<SessionAuth> {
-    const t = await requestToken(transport, {
+    // Spree only grants the admin scope to tokens bound to an OAuth application with that scope.
+    const body: Record<string, string> = {
       grant_type: 'password',
       username: creds.email,
       password: creds.password,
       scope: SCOPE,
-    });
+    };
+    if (creds.clientId && creds.clientSecret) {
+      body.client_id = creds.clientId;
+      body.client_secret = creds.clientSecret;
+    }
+    const t = await requestToken(transport, body);
     return oauthPasswordGrant.restore(
       transport,
       {
