@@ -121,6 +121,8 @@ export interface PromotionDiscountInput {
   type: 'percent' | 'fixed';
   /** Decimal string: a percentage (max 100) or an amount in the store's currency. */
   amount: string;
+  /** For `fixed`: the store's currency (Spree 6 needs it; the gem uses the store default). */
+  currency?: string | null;
 }
 
 export interface PromotionInput {

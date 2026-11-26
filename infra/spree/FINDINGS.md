@@ -371,3 +371,30 @@ The files were scanned for keys and values matching
 token/secret/password/api_key/digest/`sk_`/`pk_`. The only hits were 4.2's
 per-order guest `token`, now `[REDACTED order guest token]`. IDs, emails
 (`customerN@example.com`) and addresses are seed data.
+
+## f. Order actions and promotions (2026-11-26)
+
+Proven by `packages/spree-sdk/contract` on both stores.
+
+| Action | 4.2 (API v1) | 6.0 (Admin API v3) |
+| --- | --- | --- |
+| Ship | `PUT /api/v1/shipments/:number/ship` with `shipment[tracking]`: the before-action saves tracking, then ships. Needs a `ready` (paid) shipment | `PATCH /orders/:id/fulfillments/:id/fulfill` with `tracking`. Refuses unpaid orders: "This order is not paid for yet" |
+| Capture | `PUT /api/v1/orders/:number/payments/:number/capture` | `PATCH /orders/:id/payments/:id/capture` |
+| Cancel | `PUT /api/v1/orders/:number/cancel` | `PATCH /orders/:id/cancel` |
+| Refund | Routed (`PUT …/payments/:id/credit`) but `PaymentsController` has no `credit` action. The companion gem 0.2 creates a `Spree::Refund` instead (`POST /api/admin_native/v1/orders/:number/payments/:number/refunds`) | `POST /orders/:id/refunds` with `payment_id`, `amount`, `refund_reason_id` |
+| Refund reasons | gem `GET refund_reasons` ("Return processing" is seeded) | `GET /refund_reasons` |
+
+Promotions:
+
+1. **4.2**: API v1 only has `GET /api/v1/promotions/:id`. The gem adds list, create and update.
+   Spree keeps calculator settings in YAML columns, and Rails 6.1.6.1+ refuses `BigDecimal` from
+   YAML unless permitted, so a percent or fixed discount saved but couldn't be read back (500 on
+   the next load, in Spree admin too). The gem permits `BigDecimal`.
+2. **6.0**: `/api/v3/admin/promotions` with `expand=actions` returns each promotion's actions and
+   calculator (`{type: "flat_percent_item_total", preferences: {flat_percent: "20.0"}}`).
+   Writes take `actions: [{id?, type: "create_adjustment", calculator: {type, preferences}}]`,
+   and that array replaces the whole set, so updates must echo the existing action id.
+   `kind` is `coupon_code` or `automatic`; codes are stored lowercase. Ransack allows `name`,
+   `code`, `kind`, `starts_at`, `expires_at` (OR groups via `q[g][n][m]=or`).
+3. **6.0 bug**: a `PATCH` that fails validation (e.g. `expires_at` before `starts_at`) still
+   saves the `actions` change in the same request. The SDK validates the schedule before sending.

@@ -29,7 +29,10 @@ const probe = (capabilities: string[]): StoreProbe => ({
   probedAt: '2026-11-26T00:00:00Z',
 });
 
-function adapter(overrides: Partial<SpreeAdapter['orders']> = {}): SpreeAdapter {
+function adapter(
+  overrides: Partial<SpreeAdapter['orders']> = {},
+  promotions: Partial<SpreeAdapter['promotions']> = {},
+): SpreeAdapter {
   return {
     family: 'platform-v2',
     orders: {
@@ -44,7 +47,7 @@ function adapter(overrides: Partial<SpreeAdapter['orders']> = {}): SpreeAdapter 
     },
     products: unsupportedProducts,
     customers: unsupportedCustomers,
-    promotions: unsupportedPromotions,
+    promotions: { ...unsupportedPromotions, ...promotions },
   };
 }
 
@@ -284,6 +287,81 @@ describe('pairing and companion procedures', () => {
         code: 'BAD_REQUEST',
       });
       expect(await caller.orders.refundReasons()).toEqual([{ id: '1', name: 'Return processing' }]);
+    });
+  });
+
+  describe('promotions', () => {
+    const promo = {
+      id: '1',
+      name: 'Spring',
+      description: null,
+      code: 'SPRING',
+      status: 'active' as const,
+      startsAt: null,
+      expiresAt: null,
+      usageLimit: null,
+      usageCount: 0,
+      discount: { type: 'percent' as const, amount: '20' },
+      editableDiscount: true,
+      createdAt: null,
+      updatedAt: null,
+    };
+
+    it('creates with the store currency on fixed discounts', async () => {
+      const create = vi.fn(async () => promo);
+      const caller = createCaller(ctx(['promotions.write'], adapter({}, { create })));
+      await caller.promotions.create({
+        name: ' Spring ',
+        code: 'SPRING',
+        discount: { type: 'fixed', amount: '5' },
+      });
+      expect(create).toHaveBeenCalledWith({
+        name: 'Spring',
+        code: 'SPRING',
+        discount: { type: 'fixed', amount: '5', currency: 'USD' },
+      });
+    });
+
+    it('validates discounts, codes and dates', async () => {
+      const caller = createCaller(
+        ctx(['promotions.write'], adapter({}, { create: vi.fn(async () => promo) })),
+      );
+      for (const bad of [
+        { name: 'X', discount: { type: 'percent' as const, amount: '120' } },
+        { name: 'X', discount: { type: 'fixed' as const, amount: '0' } },
+        { name: 'X', code: 'has space', discount: { type: 'fixed' as const, amount: '1' } },
+        { name: '', discount: { type: 'fixed' as const, amount: '1' } },
+        { name: 'X', expiresAt: 'tomorrow', discount: { type: 'fixed' as const, amount: '1' } },
+      ]) {
+        await expect(caller.promotions.create(bad)).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      }
+    });
+
+    it('updates only the fields sent, and clears with null', async () => {
+      const update = vi.fn(async () => promo);
+      const caller = createCaller(ctx(['promotions.write'], adapter({}, { update })));
+      await caller.promotions.update({
+        id: '1',
+        expiresAt: null,
+        discount: { type: 'percent', amount: '10' },
+      });
+      expect(update).toHaveBeenCalledWith(
+        { id: '1' },
+        { expiresAt: null, discount: { type: 'percent', amount: '10' } },
+      );
+    });
+
+    it('lists behind promotions.read', async () => {
+      const list = vi.fn(async () => ({ items: [promo], nextCursor: null }));
+      await expect(
+        createCaller(ctx(['orders.read'], adapter({}, { list }))).promotions.list({}),
+      ).rejects.toMatchObject({
+        code: 'PRECONDITION_FAILED',
+      });
+      await createCaller(ctx(['promotions.read'], adapter({}, { list }))).promotions.list({
+        filter: 'active',
+      });
+      expect(list).toHaveBeenCalledWith({ filter: 'active', cursor: null, perPage: 25 });
     });
   });
 });

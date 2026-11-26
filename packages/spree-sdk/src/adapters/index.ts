@@ -1,8 +1,10 @@
 import type { ApiFamily } from '../capabilities/types';
 import { type CompanionPort, companion } from '../companion';
+import { companionPromotions } from '../companion/promotions';
 import type { SpreeAdapter } from '../ports';
 import type { Transport } from '../transport';
 import { adminV3Orders } from './admin-v3/orders';
+import { adminV3Promotions } from './admin-v3/promotions';
 import { apiV1Orders } from './api-v1/orders';
 import { platformV2Orders } from './platform-v2/orders';
 import { unsupportedCustomers, unsupportedProducts, unsupportedPromotions } from './unsupported';
@@ -33,10 +35,20 @@ const pending = {
 function baseAdapter(family: ApiFamily, transport: Transport, gem?: CompanionPort): SpreeAdapter {
   switch (family) {
     case 'api-v1':
-      return { family, orders: apiV1Orders(transport, gem), ...pending };
+      return {
+        family,
+        ...pending,
+        orders: apiV1Orders(transport, gem),
+        promotions: gem ? companionPromotions(transport) : unsupportedPromotions,
+      };
     case 'platform-v2':
       return { family, orders: platformV2Orders(transport), ...pending };
     case 'admin-v3':
-      return { family, orders: adminV3Orders(transport), ...pending };
+      return {
+        family,
+        ...pending,
+        orders: adminV3Orders(transport),
+        promotions: adminV3Promotions(transport),
+      };
   }
 }
