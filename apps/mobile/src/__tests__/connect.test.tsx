@@ -8,7 +8,7 @@ jest.mock('expo-router', () => ({ router: { push: (...args: unknown[]) => mockPu
 
 type Route = { status: number; body?: unknown };
 function mockFetch(routes: Record<string, Route>) {
-  global.fetch = jest.fn(async (url: string) => {
+  globalThis.fetch = jest.fn(async (url: string) => {
     const r = routes[new URL(url).pathname] ?? { status: 404, body: {} };
     return new Response(JSON.stringify(r.body ?? {}), {
       status: r.status,
