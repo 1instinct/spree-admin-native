@@ -1,18 +1,29 @@
 {
   "id": "1042",
   "number": "R482913057",
-  "state": "complete",
-  "paymentState": "paid",
-  "shipmentState": "ready",
   "email": "maya@example.com",
-  "customer": { "id": "77", "email": "maya@example.com" },
+  "customer": {
+    "id": "77",
+    "email": "maya@example.com"
+  },
   "currency": "USD",
   "itemCount": 3,
-  "itemTotal": { "amount": "184.00", "currency": "USD" },
-  "shipTotal": { "amount": "0.00", "currency": "USD" },
-  "taxTotal": { "amount": "0.00", "currency": "USD" },
-  "promoTotal": { "amount": "0.00", "currency": "USD" },
-  "total": { "amount": "184.00", "currency": "USD" },
+  "itemTotal": {
+    "amount": "184.00",
+    "currency": "USD"
+  },
+  "shipTotal": {
+    "amount": "0.00",
+    "currency": "USD"
+  },
+  "taxTotal": {
+    "amount": "0.00",
+    "currency": "USD"
+  },
+  "total": {
+    "amount": "184.00",
+    "currency": "USD"
+  },
   "completedAt": "2026-11-26T09:41:00.000Z",
   "createdAt": "2026-11-26T09:30:00.000Z",
   "updatedAt": "2026-11-26T09:42:00.000Z",
@@ -38,8 +49,14 @@
       "sku": "TOTE-OLV",
       "optionsText": "Color: Olive",
       "quantity": 1,
-      "price": { "amount": "120.00", "currency": "USD" },
-      "total": { "amount": "120.00", "currency": "USD" },
+      "price": {
+        "amount": "120.00",
+        "currency": "USD"
+      },
+      "total": {
+        "amount": "120.00",
+        "currency": "USD"
+      },
       "imageUrl": null
     },
     {
@@ -49,34 +66,73 @@
       "sku": "KR-BRS",
       "optionsText": null,
       "quantity": 2,
-      "price": { "amount": "32.00", "currency": "USD" },
-      "total": { "amount": "64.00", "currency": "USD" },
+      "price": {
+        "amount": "32.00",
+        "currency": "USD"
+      },
+      "total": {
+        "amount": "64.00",
+        "currency": "USD"
+      },
       "imageUrl": null
-    }
-  ],
-  "shipments": [
-    {
-      "id": "5",
-      "number": "H38120471",
-      "state": "ready",
-      "trackingNumber": null,
-      "trackingUrl": null,
-      "shippedAt": null,
-      "shippingMethodName": "UPS Ground",
-      "stockLocationName": "Main warehouse",
-      "cost": { "amount": "0.00", "currency": "USD" },
-      "lineItemIds": ["1", "2"]
     }
   ],
   "payments": [
     {
       "id": "9",
       "number": "P7K2M4ZD",
-      "state": "completed",
-      "amount": { "amount": "184.00", "currency": "USD" },
+      "amount": {
+        "amount": "184.00",
+        "currency": "USD"
+      },
       "methodName": "Credit card",
-      "sourceSummary": "Visa •••• 4242",
-      "createdAt": "2026-11-26T09:41:00.000Z"
+      "sourceSummary": "Visa \u2022\u2022\u2022\u2022 4242",
+      "createdAt": "2026-11-26T09:41:00.000Z",
+      "status": "completed",
+      "canCapture": false,
+      "canVoid": false
+    }
+  ],
+  "status": "placed",
+  "rawState": "complete",
+  "paymentStatus": "paid",
+  "fulfillmentStatus": "unfulfilled",
+  "discountTotal": {
+    "amount": "0.00",
+    "currency": "USD"
+  },
+  "paymentTotal": {
+    "amount": "184.00",
+    "currency": "USD"
+  },
+  "amountDue": {
+    "amount": "0.00",
+    "currency": "USD"
+  },
+  "fulfillments": [
+    {
+      "id": "5",
+      "number": "H38120471",
+      "trackingNumber": null,
+      "trackingUrl": null,
+      "stockLocationName": "Main warehouse",
+      "cost": {
+        "amount": "0.00",
+        "currency": "USD"
+      },
+      "status": "ready",
+      "fulfilledAt": null,
+      "methodName": "UPS Ground",
+      "items": [
+        {
+          "lineItemId": "1",
+          "quantity": 1
+        },
+        {
+          "lineItemId": "2",
+          "quantity": 2
+        }
+      ]
     }
   ]
 }
