@@ -1,4 +1,5 @@
 export * from './adapters';
+export * as jsonapi from './adapters/jsonapi';
 export * from './auth';
 export * from './capabilities';
 export * from './companion';
