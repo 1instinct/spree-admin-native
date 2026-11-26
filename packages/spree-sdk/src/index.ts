@@ -1,6 +1,7 @@
 export * from './adapters';
 export * from './auth';
 export * from './capabilities';
+export * from './companion';
 export * from './errors';
 export * from './ports';
 export * from './query';
