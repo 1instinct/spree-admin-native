@@ -14,4 +14,4 @@ never call Spree directly.
 ## Consequences
 - One contract for UI, tests, Relay and extensions.
 - The router bundle ships in the app (size budget: under 150 KB minified for `api` + `spree-sdk`).
-- If `unstable_localLink` is unsuitable under Hermes, we maintain a small custom link.
+- If `localLink` is unsuitable under Hermes, we maintain a small custom link.

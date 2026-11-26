@@ -72,7 +72,7 @@ optional companion pieces.
 ### 3.1 Why tRPC when the backend is Rails
 
 Spree is Ruby; tRPC is TypeScript. We use tRPC as the **app's internal contract** and run the
-router **inside the app** through tRPC's local link (`unstable_localLink` in `@trpc/client`
+router **inside the app** through tRPC's local link (`localLink` in `@trpc/client`
 v11; Phase 0 spike confirms it in React Native, fallback is a 40-line custom link). This gives us:
 
 - End-to-end types from domain schema to screen, with zod validation at the boundary.
@@ -355,7 +355,7 @@ Summary here; full detail in `docs/design/design-language.md`.
 | --- | --- |
 | Spree 4.2–4.3 have no Platform API and no refund endpoint (API v1 only has `payments/:id/credit`) | API v1 adapter; refunds on 4.x come from the gem; UI shows the reason when unavailable |
 | No password sign-in reaches admin data on 4.2 (answered by the Phase 0 spike) | API key sign-in now; QR pairing via the gem in Phase 1 |
-| `unstable_localLink` stability in RN | Phase 0 spike; small custom link as fallback |
+| `localLink` stability in RN | Phase 0 spike; small custom link as fallback |
 | Expo push tokens are tied to an app's EAS project; forks need their own | Gem stores the token's project; documented per distribution |
 | App Store review for an app that connects to arbitrary servers | Ship a demo store and reviewer credentials; clear onboarding copy |
 | Admin API v3 keeps moving (Spree 6 shipped Oct 2026 with a React admin on the same API) | Adapters isolate it; v3 adapter uses `@spree/admin-sdk` types; v3 also gives us `/me` permission keys and `/dashboard/counters` for Home |
