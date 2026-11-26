@@ -9,7 +9,7 @@
 capabilities, sign in, and list orders as normalised domain objects, exposed through a tRPC
 router that the Expo app calls in-process, with a Connect Store screen that shows the result.
 
-**Architecture:** see `docs/superpowers/specs/2026-11-26-dna-admin-native-design.md` §3.
+**Architecture:** see `docs/superpowers/specs/2026-11-26-spree-admin-native-design.md` §3.
 
 **Tech stack:** pnpm 10, Turborepo, TypeScript 5.9 strict, zod 4, Vitest, tRPC v11,
 Expo SDK 58, Docker Compose (Spree matrix).
@@ -35,7 +35,7 @@ Expo SDK 58, Docker Compose (Spree matrix).
 - [ ] Run `pnpm install && pnpm typecheck` → passes with zero packages.
 - [ ] Commit: `[Chore]: Workspace tooling. Changes:`
 
-## Task 2: `@dna-admin/domain` — Money
+## Task 2: `@spree-native/domain` — Money
 
 **Files:** `packages/domain/src/money.ts`, `packages/domain/src/money.test.ts`
 
@@ -64,12 +64,12 @@ describe('Money', () => {
 });
 ```
 
-- [ ] `pnpm --filter @dna-admin/domain test` → fails (module missing).
+- [ ] `pnpm --filter @spree-native/domain test` → fails (module missing).
 - [ ] Implement with `bigint` minor units internally (currency exponent from
       `Intl.NumberFormat(...).resolvedOptions().maximumFractionDigits`).
 - [ ] Tests pass. Commit.
 
-## Task 3: `@dna-admin/domain` — Order, LineItem, Shipment, Payment, Customer
+## Task 3: `@spree-native/domain` — Order, LineItem, Shipment, Payment, Customer
 
 **Files:** `packages/domain/src/{order,shipment,payment,customer,address,product}.ts` + tests
 
@@ -168,7 +168,7 @@ describe('Money', () => {
 - [ ] CI matrix: 4.2 and latest now; 4.7, 4.10, 5.0, 5.3 added in Phase 1.
 - [ ] Commit.
 
-## Task 11: `@dna-admin/api` router skeleton
+## Task 11: `@spree-native/api` router skeleton
 
 **Files:** `packages/api/src/{trpc,context,router,errors}.ts`,
 `packages/api/src/routers/{store,orders}.ts` + tests
@@ -180,7 +180,7 @@ describe('Money', () => {
 - [ ] Context carries `{ adapter, capabilities, storeId }`.
 - [ ] Commit.
 
-## Task 12: `@dna-admin/ui` tokens
+## Task 12: `@spree-native/ui` tokens
 
 **Files:** `packages/ui/src/tokens/{color,type,space,radius,motion}.ts`,
 `packages/ui/tailwind-preset.js`, `packages/ui/src/tokens/tokens.test.ts`
@@ -196,7 +196,7 @@ describe('Money', () => {
 
 - [ ] `npx create-expo-app@latest apps/mobile --template tabs` then strip to Native Tabs:
       Home, Orders, Products, Customers, More.
-- [ ] `app.config.ts` reads `DNA_DISTRIBUTION` and loads `distributions/<name>`.
+- [ ] `app.config.ts` reads `APP_DISTRIBUTION` and loads `distributions/<name>`.
 - [ ] tRPC client with `localLink` to `appRouter` (spike: confirm `unstable_localLink`
       runs under Hermes; else add `packages/api/src/localLink.ts`).
 - [ ] Commit.

@@ -7,7 +7,7 @@ Spree is a Rails app; tRPC is a TypeScript framework. We want typed end-to-end c
 TanStack Query integration, and zero extra servers for store owners.
 
 ## Decision
-The app's `appRouter` (`@dna-admin/api`) runs inside the app through tRPC's local link.
+The app's `appRouter` (`@spree-native/api`) runs inside the app through tRPC's local link.
 The same router can be served by the optional Relay over HTTP. Screens call tRPC only; they
 never call Spree directly.
 

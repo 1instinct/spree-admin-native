@@ -1,8 +1,8 @@
-# DNA Admin Native — Design Spec
+# Spree Admin Native — Design Spec
 
 - **Status:** Draft for review
 - **Date:** 2026-11-26
-- **Repo:** `dna-admin-native` (open source, MIT)
+- **Repo:** [`1instinct/spree-admin-native`](https://github.com/1instinct/spree-admin-native) (open source, MIT, template repo, immutable releases)
 - **First fork:** `beeper-admin-native` (see its own spec)
 
 ## 1. What we are building
@@ -51,18 +51,18 @@ optional companion pieces.
 
 ```
 ┌────────────────────────── apps/mobile (Expo SDK 58, Expo Router) ──────────────────────────┐
-│ Screens ── @dna-admin/ui (tokens, primitives, commerce patterns)                           │
+│ Screens ── @spree-native/ui (tokens, primitives, commerce patterns)                           │
 │    │                                                                                        │
 │ @trpc/tanstack-react-query  ── TanStack Query cache (persisted to MMKV)                    │
 │    │                                                                                        │
 │ tRPC link chain:  splitLink ─┬─ localLink  → appRouter runs IN the app (default)           │
 │                              └─ httpBatchStreamLink → Relay (optional, self-hosted)        │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
-                 │ appRouter (@dna-admin/api)  — procedures + capability middleware
+                 │ appRouter (@spree-native/api)  — procedures + capability middleware
                  ▼
-        @dna-admin/spree-sdk — transport · auth strategies · capability probe · adapters
+        @spree-native/spree-sdk — transport · auth strategies · capability probe · adapters
           ├─ adapter: platform-v2   (Spree 4.2 → 5.x with legacy v2)   OAuth2 bearer
-          └─ adapter: admin-v3      (Spree 5.4+)                       secret API key
+          └─ adapter: admin-v3      (Spree 5.4 → 6.x)                  admin JWT or secret API key
                  │
                  ▼
             Spree store  (+ optional gem: spree_admin_native)
@@ -87,13 +87,13 @@ v11; Phase 0 spike confirms it in React Native, fallback is a 40-line custom lin
 | `apps/mobile` | — | Expo app. Routes, screens, notification handling, secure storage. |
 | `apps/relay` | — | Optional Node service (Hono + tRPC fetch adapter). Webhook ingest, push fan-out, scheduled digests, extension proxy. Docker image + one-click deploys. |
 | `apps/docs` | — | Docs site (Starlight). Generated compatibility matrix lives here. |
-| `packages/domain` | `@dna-admin/domain` | zod schemas for normalised models: `Order`, `LineItem`, `Shipment`, `Payment`, `Refund`, `Product`, `Variant`, `StockItem`, `Customer`, `Address`, `Promotion`, `Store`, `Money`. |
-| `packages/spree-sdk` | `@dna-admin/spree-sdk` | Framework-free Spree client: fetch transport, retries, auth strategies, capability probe, adapters mapping Spree payloads to domain models. Usable outside the app (CLI, scripts, other projects). |
-| `packages/api` | `@dna-admin/api` | tRPC `appRouter`, context, `requireCapability` middleware, typed errors. |
-| `packages/ui` | `@dna-admin/ui` | Design tokens (one source → TS + NativeWind preset), primitives, commerce patterns (`ResourceList`, `MoneyText`, `StatusBadge`, `Timeline`, `ActionSheet`). |
-| `packages/extension-sdk` | `@dna-admin/extension-sdk` | `defineExtension()`, slot types, permission model, Blocks schema. |
-| `packages/config` | `@dna-admin/config` | Shared tsconfig, lint, test presets. |
-| `extensions/*` | `@dna-admin/ext-*` | First-party extensions (analytics, reviews, digital goods, …). |
+| `packages/domain` | `@spree-native/domain` | zod schemas for normalised models: `Order`, `LineItem`, `Shipment`, `Payment`, `Refund`, `Product`, `Variant`, `StockItem`, `Customer`, `Address`, `Promotion`, `Store`, `Money`. |
+| `packages/spree-sdk` | `@spree-native/spree-sdk` | Framework-free Spree client: fetch transport, retries, auth strategies, capability probe, adapters mapping Spree payloads to domain models. Usable outside the app (CLI, scripts, other projects). |
+| `packages/api` | `@spree-native/api` | tRPC `appRouter`, context, `requireCapability` middleware, typed errors. |
+| `packages/ui` | `@spree-native/ui` | Design tokens (one source → TS + NativeWind preset), primitives, commerce patterns (`ResourceList`, `MoneyText`, `StatusBadge`, `Timeline`, `ActionSheet`). |
+| `packages/extension-sdk` | `@spree-native/extension-sdk` | `defineExtension()`, slot types, permission model, Blocks schema. |
+| `packages/config` | `@spree-native/config` | Shared tsconfig, lint, test presets. |
+| `extensions/*` | `@spree-native/ext-*` | First-party extensions (analytics, reviews, digital goods, …). |
 | `gems/spree_admin_native` | `spree_admin_native` | Optional Rails engine for Spree ≥ 4.2 (see §6). |
 | `distributions/default` | — | The upstream distribution: name, icons, theme, enabled extensions, EAS config. |
 
@@ -125,7 +125,7 @@ type Capability =
 
 Procedures declare what they need (`requireCapability('orders.refund')`). If missing, they
 throw `CAPABILITY_UNAVAILABLE` with a reason the UI shows in plain words, e.g. *"Refunds from
-the app need Spree 4.5 or the DNA companion gem."*
+the app need Spree 4.5 or the companion gem."*
 
 ### 3.4 Compatibility targets (to be confirmed by contract tests)
 
@@ -134,16 +134,17 @@ the app need Spree 4.5 or the DNA companion gem."*
 | 4.2 – 4.4 | Platform API v2 | OAuth2 (Doorkeeper `/spree_oauth/token`) | Companion gem, else background polling |
 | 4.5 – 4.10 | Platform API v2 | OAuth2 | Gem, or webhook subscribers + Relay |
 | 5.0 – 5.3 | Platform API v2 | OAuth2 | Gem, or Webhooks 2.0 (5.3) + Relay |
-| 5.4 + | Admin API v3 (v2 via `spree_legacy_api_v2`) | Secret API key (`x-spree-api-key`, scoped) | Gem, or webhook endpoints + Relay |
+| 5.4 – 5.x | Admin API v3 (v2 via `spree_legacy_api_v2`) | Admin JWT login or secret API key (`X-Spree-Api-Key`, scoped) | Gem, or webhook endpoints + Relay |
+| 6.0 + (current: 6.0.6, Oct 2026) | Admin API v3 | Admin JWT login (`/api/v3/admin/auth/login`) or secret API key | Gem, or webhook endpoints + Relay |
 
-CI runs the `spree-sdk` contract suite against Dockerised Spree **4.2, 4.7, 4.10, 5.0, 5.3
-and latest** with sample data. The matrix in the docs is generated from those runs.
+CI runs the `spree-sdk` contract suite against Dockerised Spree **4.2, 4.7, 4.10, 5.0, 5.3,
+5.5 and 6.0** with sample data. The matrix in the docs is generated from those runs.
 
 ### 3.5 Authentication
 
 | Method | Works on | UX |
 | --- | --- | --- |
-| **Sign in with email + password** | Platform v2 (password grant, `admin` scope) | Shopify-like. Phase 0 spike confirms admin-scope tokens on 4.2. |
+| **Sign in with email + password** | Platform v2 (password grant, `admin` scope); Admin v3 (`POST /api/v3/admin/auth/login` → short-lived JWT, refresh via HttpOnly cookie + `X-CSRF-Token`) | Shopify-like. Phase 0 spikes: admin-scope tokens on 4.2, and cookie refresh under React Native's native cookie store on 6.0. |
 | **Scan pairing code** | Any, with the gem | "Pair device" button in Spree admin shows a QR; app scans; gem issues a scoped, revocable device token. Best UX, no password on the phone. |
 | **Paste API key / OAuth app** | admin-v3 keys, Platform client credentials | Fallback for power users and CI. |
 
@@ -223,7 +224,7 @@ changes the app's features):
 `settings.sections`, `more.items`, `notifications.types`, plus full routes for native
 extensions.
 
-**Manifest** (`dna-extension.json`): id, name, version, publisher, compatibility
+**Manifest** (`extension.json`): id, name, version, publisher, compatibility
 (`spree: ">=4.2"`, required capabilities, required Spree gem), permissions
 (`orders:read`, `orders:write`, …), contributions, and for Blocks extensions the endpoint
 URL and a public key used to verify signed responses.
@@ -233,7 +234,7 @@ URL and a public key used to verify signed responses.
 to the extension server with the context (store, resource id) and a short-lived signed
 token. The server returns a new block tree or a toast. Think Slack Block Kit for Spree.
 
-**Registry**: a public Git repository (`dna-admin-native-extensions`) with one folder per
+**Registry**: a public Git repository (`spree-admin-native-extensions`) with one folder per
 extension. Adding one is a pull request reviewed by maintainers; CI validates the manifest,
 pings the endpoint and checks compatibility claims. The app reads a signed index built from
 that repo. Forks can point at their own registry.
@@ -281,7 +282,7 @@ The fork contract, in short (full version in `docs/forking.md`):
   (name, slug, bundle IDs, EAS project, deep-link scheme, default store URL, enabled
   extensions, feature flags), `theme.ts` (token overrides), `assets/` (icon, splash, sounds),
   `extensions/` (native extensions).
-- `app.config.ts` reads `DNA_DISTRIBUTION` (default `default`) and builds from that folder.
+- `app.config.ts` reads `APP_DISTRIBUTION` (default `default`) and builds from that folder.
 - Upstream never edits a non-default distribution; forks never edit outside their
   distribution and `extensions/`. Upstream merges stay conflict-free.
 - A scheduled GitHub Action in each fork opens an "Sync upstream" pull request.
@@ -310,7 +311,7 @@ Summary here; full detail in `docs/design/design-language.md`.
 | App runtime | Expo SDK 58, React Native New Architecture, Expo Router (Native Tabs) | Current stable SDK; native tabs and file routes; EAS Build/Update/Submit |
 | Contract | tRPC v11 + `@trpc/tanstack-react-query` | Typed, local or remote, TanStack Query native |
 | Validation | zod 4 | Shared by domain, router and Blocks schema |
-| Styling | NativeWind with tokens from `@dna-admin/ui` (CSS variables for runtime themes) | Same Tailwind vocabulary as `dna-frontend`; theme swap per distribution |
+| Styling | NativeWind with tokens from `@spree-native/ui` (CSS variables for runtime themes) | Same Tailwind vocabulary as `dna-frontend`; theme swap per distribution |
 | Lists | FlashList v2 | Large order/product lists |
 | Motion | Reanimated 4, Gesture Handler | Swipe actions, sheets |
 | Charts | Victory Native (Skia) | Sparklines and analytics |
@@ -353,12 +354,20 @@ Summary here; full detail in `docs/design/design-language.md`.
 | `unstable_localLink` stability in RN | Phase 0 spike; small custom link as fallback |
 | Expo push tokens are tied to an app's EAS project; forks need their own | Gem stores the token's project; documented per distribution |
 | App Store review for an app that connects to arbitrary servers | Ship a demo store and reviewer credentials; clear onboarding copy |
-| Spree 6 / React admin direction may change Admin API | Adapters isolate it; v3 adapter tracks `@spree/admin-sdk` types |
-| Naming: "DNA Admin" vs a more generic OSS name | Decide before first public release (see §14) |
+| Admin API v3 keeps moving (Spree 6 shipped Oct 2026 with a React admin on the same API) | Adapters isolate it; v3 adapter uses `@spree/admin-sdk` types; v3 also gives us `/me` permission keys and `/dashboard/counters` for Home |
+| "Spree" is a trademark; using it in an App Store name may need permission | Check Spree trademark guidance before the store listing (see §14) |
 
 ## 14. Decisions needed from the maintainer
 
-1. Public app name and store listing ("DNA Admin" vs a Spree-neutral name).
-2. GitHub org for the OSS repo (`1instinct` assumed) and for the Beeper fork (`Beeper-Buzz` assumed).
-3. Whether the companion gem lives in this monorepo (recommended) or its own repo.
+1. App Store display name (repo is `spree-admin-native`; check trademark use of "Spree").
+2. Beeper fork repo (`Beeper-Buzz/beeper-admin-native` assumed). Prefer a GitHub **fork** over "Use this template": template copies have no shared history, so upstream sync needs `--allow-unrelated-histories` once.
+3. ~~Gem location~~ Decided: `gems/spree_admin_native` in this monorepo.
 4. Whether to apply to have the app listed as a Spree community integration.
+5. Claim the `@spree-native` npm org before the first package publish.
+
+## 15. Storefront kit (`expo-spree`)
+
+Scope expanded on 2026-11-26: the same monorepo also ships a storefront kit any Expo app can
+add. See `2026-11-26-expo-spree-storefront-design.md` and ADR 0007. The shared layers
+(`domain`, `spree-sdk` transport, auth, capability probe, money) are built once in Phase 0 and
+used by both.

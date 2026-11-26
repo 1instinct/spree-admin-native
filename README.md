@@ -1,10 +1,10 @@
-# DNA Admin Native
+# Spree Admin Native
 
 **Run your Spree Commerce store from your phone.** An open-source, native admin app for
 [Spree](https://spreecommerce.org) 4.2 through the latest release, on iOS, Android, iPad
 and the web.
 
-> Status: **planning / Phase 0**. Read the [design spec](docs/superpowers/specs/2026-11-26-dna-admin-native-design.md)
+> Status: **planning / Phase 0**. Read the [design spec](docs/superpowers/specs/2026-11-26-spree-admin-native-design.md)
 > and the [Phase 0 plan](docs/superpowers/plans/2026-11-26-phase-0-foundations.md).
 
 ## What it does
