@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Image, OptionType, OptionValue } from './catalog';
 import { Id, IsoDateTime, tolerantEnum } from './common';
 import { Money } from './money';
 
@@ -14,6 +15,11 @@ export const Variant = z.object({
   /** null when inventory isn't tracked for this variant. */
   totalOnHand: z.number().int().nullable(),
   imageUrl: z.string().nullable(),
+  /** Storefront fields; admin lists may leave them empty. */
+  optionValues: z.array(OptionValue).default([]),
+  images: z.array(Image).default([]),
+  /** Can be bought now (in stock, or backorderable). null when the API doesn't say. */
+  purchasable: z.boolean().nullable().default(null),
 });
 export type Variant = z.infer<typeof Variant>;
 
@@ -25,12 +31,14 @@ export const Product = z.object({
   description: z.string().nullable(),
   imageUrl: z.string().nullable(),
   variants: z.array(Variant),
+  optionTypes: z.array(OptionType).default([]),
+  images: z.array(Image).default([]),
   updatedAt: IsoDateTime,
 });
 export type Product = z.infer<typeof Product>;
 
 /** Sellable variants: non-master when a product has options, otherwise the master. */
-export function sellableVariants(product: Pick<Product, 'variants'>): Variant[] {
+export function sellableVariants<V extends Pick<Variant, 'isMaster'>>(product: { variants: V[] }): V[] {
   const options = product.variants.filter((v) => !v.isMaster);
   return options.length > 0 ? options : product.variants;
 }
