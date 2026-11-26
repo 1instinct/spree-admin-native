@@ -9,3 +9,6 @@ android/
 .env.*
 !.env.example
 contract-results/
+expo-env.d.ts
+.expo-shared/
+dist-web/

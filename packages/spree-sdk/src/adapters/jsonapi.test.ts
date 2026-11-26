@@ -8,7 +8,12 @@ const doc = {
       type: 'order',
       attributes: { number: 'R1', total: '10.0', item_count: 2 },
       relationships: {
-        line_items: { data: [{ id: '5', type: 'line_item' }, { id: '6', type: 'line_item' }] },
+        line_items: {
+          data: [
+            { id: '5', type: 'line_item' },
+            { id: '6', type: 'line_item' },
+          ],
+        },
         user: { data: { id: '9', type: 'user' } },
         bill_address: { data: null },
       },

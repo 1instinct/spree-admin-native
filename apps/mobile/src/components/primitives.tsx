@@ -1,0 +1,184 @@
+import { formatMoney, type Money } from '@spree-native/domain';
+import { layout, radius, space } from '@spree-native/ui';
+import {
+  ActivityIndicator,
+  Pressable,
+  type PressableProps,
+  StyleSheet,
+  TextInput,
+  type TextInputProps,
+  View,
+  type ViewProps,
+} from 'react-native';
+import { useTheme } from '@/theme/theme';
+import { Text } from './text';
+
+export function Screen({ style, ...rest }: ViewProps) {
+  const { colors } = useTheme();
+  return <View style={[{ flex: 1, backgroundColor: colors.bg }, style]} {...rest} />;
+}
+
+export function MoneyText({
+  value,
+  size = 'body',
+  font = 'mono',
+}: {
+  value: Money;
+  size?: 'body' | 'callout' | 'title2' | 'title1' | 'hero';
+  font?: 'mono' | 'display';
+}) {
+  const negative = value.amount.startsWith('-');
+  return (
+    <Text size={size} font={font} tone={negative ? 'critical' : 'ink'}>
+      {formatMoney(value)}
+    </Text>
+  );
+}
+
+/** Spree number with its prefix as a small inverted glyph: [R]482913057. Long-press to copy comes in Phase 1. */
+export function SpreeNumberText({ value }: { value: string }) {
+  const { colors, fonts } = useTheme();
+  const prefix = /^[A-Z]{1,2}/.exec(value)?.[0] ?? '';
+  return (
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+      accessibilityLabel={`Number ${value}`}
+    >
+      <View
+        style={{ backgroundColor: colors.ink, borderRadius: 3, paddingHorizontal: 3, paddingVertical: 1 }}
+      >
+        <Text style={{ fontFamily: fonts.monoMedium, fontSize: 10, lineHeight: 13, color: colors.bg }}>
+          {prefix}
+        </Text>
+      </View>
+      <Text font="monoMedium" size="footnote">
+        {value.slice(prefix.length)}
+      </Text>
+    </View>
+  );
+}
+
+export type BadgeTone = 'positive' | 'attention' | 'critical' | 'info' | 'neutral';
+
+/** Status badge: dot plus label, never colour alone. */
+export function Badge({ tone, label }: { tone: BadgeTone; label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.badge, { borderColor: colors.line, backgroundColor: colors.surface }]}>
+      <View style={[styles.dot, { backgroundColor: colors[tone] }]} />
+      <Text size="caption" font="uiMedium">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+export function Button({
+  title,
+  loading,
+  disabled,
+  variant = 'primary',
+  ...rest
+}: PressableProps & { title: string; loading?: boolean; variant?: 'primary' | 'plain' }) {
+  const { colors } = useTheme();
+  const primary = variant === 'primary';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        styles.button,
+        primary ? { backgroundColor: colors.accent } : { backgroundColor: 'transparent' },
+        { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
+      ]}
+      {...rest}
+    >
+      {loading ? (
+        <ActivityIndicator color={primary ? colors.onAccent : colors.ink} />
+      ) : (
+        <Text
+          font="uiSemibold"
+          size="callout"
+          style={{ color: primary ? colors.onAccent : colors.accentInk }}
+        >
+          {title}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+export function TextField({
+  label,
+  error,
+  ...rest
+}: TextInputProps & { label: string; error?: string | null }) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={{ gap: space[1] }}>
+      <Text size="footnote" font="uiMedium" tone="muted">
+        {label}
+      </Text>
+      <TextInput
+        accessibilityLabel={label}
+        placeholderTextColor={colors.inkMuted}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.surface,
+            borderColor: error ? colors.critical : colors.line,
+            color: colors.ink,
+            fontFamily: fonts.ui,
+          },
+        ]}
+        {...rest}
+      />
+      {error ? (
+        <Text size="footnote" tone="critical">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={{ padding: space[8], gap: space[2], alignItems: 'center' }}>
+      <Text size="title3" font="uiSemibold" style={{ textAlign: 'center' }}>
+        {title}
+      </Text>
+      <Text tone="muted" style={{ textAlign: 'center', maxWidth: 320 }}>
+        {body}
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.badge,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  button: {
+    minHeight: layout.hitTarget + 4,
+    borderRadius: radius.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space[4],
+  },
+  input: {
+    minHeight: layout.hitTarget,
+    borderWidth: 1,
+    borderRadius: radius.card,
+    paddingHorizontal: space[3],
+    fontSize: 16,
+  },
+});

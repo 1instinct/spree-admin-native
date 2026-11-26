@@ -105,3 +105,38 @@ describe('appRouter', () => {
     expect(err).toMatchObject({ data: { code: 'UNAUTHORIZED', spreeKind: 'auth' } });
   });
 });
+
+describe('store.signIn', () => {
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+  it('signs in to a Platform v2 store with email and password', async () => {
+    const fetch = async (url: string) => {
+      const path = new URL(url).pathname;
+      if (path === '/api/v2/platform/orders') return json(401, {});
+      if (path === '/spree_oauth/token')
+        return json(200, { access_token: 'a1', refresh_token: 'r1', expires_in: 7200, created_at: 1 });
+      return json(404, {});
+    };
+    const res = await createCaller({ session: null, fetch }).store.signIn({
+      method: 'password',
+      url: 'shop.test',
+      email: 'a@b.c',
+      password: 'x',
+    });
+    expect(res.probe.preferredApi).toBe('platform-v2');
+    expect(res.credential).toMatchObject({ method: 'oauthPassword', accessToken: 'a1' });
+  });
+
+  it('refuses an API key on a Platform v2 store with a clear message', async () => {
+    const fetch = async (url: string) =>
+      new URL(url).pathname === '/api/v2/platform/orders' ? json(401, {}) : json(404, {});
+    await expect(
+      createCaller({ session: null, fetch }).store.signIn({
+        method: 'apiKey',
+        url: 'shop.test',
+        apiKey: 'sk_12345678',
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST', message: expect.stringMatching(/Spree 5.4/) });
+  });
+});

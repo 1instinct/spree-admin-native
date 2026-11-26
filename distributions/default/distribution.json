@@ -1,0 +1,11 @@
+{
+  "$comment": "Placeholders until the App Store name and bundle IDs are decided (spec §14).",
+  "name": "Spree Admin",
+  "slug": "spree-admin-native",
+  "scheme": "spreeadmin",
+  "ios": { "bundleIdentifier": "is.instinct.spreeadmin" },
+  "android": { "package": "is.instinct.spreeadmin" },
+  "defaultStoreUrl": null,
+  "lockToStore": false,
+  "brandColor": "#15181C"
+}
