@@ -36,7 +36,13 @@ export const OrderFulfillmentStatus = tolerantEnum([
 export type OrderFulfillmentStatus = z.infer<typeof OrderFulfillmentStatus>;
 
 /** A shipment (Spree 4/5) or fulfillment (Spree 6). */
-export const FulfillmentStatus = tolerantEnum(['pending', 'ready', 'fulfilled', 'delivered', 'canceled'] as const);
+export const FulfillmentStatus = tolerantEnum([
+  'pending',
+  'ready',
+  'fulfilled',
+  'delivered',
+  'canceled',
+] as const);
 /** Same values in Spree 4 and 6. */
 export const PaymentStatus = tolerantEnum([
   'checkout',
@@ -127,8 +133,17 @@ export type Order = z.infer<typeof Order>;
 export const OrderListFilter = z.enum(['unfulfilled', 'unpaid', 'open', 'all']);
 export type OrderListFilter = z.infer<typeof OrderListFilter>;
 
-const PAYMENT_ACTION: ReadonlySet<OrderPaymentStatus> = new Set(['unpaid', 'partially_paid', 'authorized', 'failed']);
-const FULFILLMENT_ACTION: ReadonlySet<OrderFulfillmentStatus> = new Set(['unfulfilled', 'partial', 'backorder']);
+const PAYMENT_ACTION: ReadonlySet<OrderPaymentStatus> = new Set([
+  'unpaid',
+  'partially_paid',
+  'authorized',
+  'failed',
+]);
+const FULFILLMENT_ACTION: ReadonlySet<OrderFulfillmentStatus> = new Set([
+  'unfulfilled',
+  'partial',
+  'backorder',
+]);
 
 /** True when a placed order is waiting on the merchant: payment to collect or items to ship. */
 export function needsAction(order: Pick<Order, 'status' | 'paymentStatus' | 'fulfillmentStatus'>): boolean {

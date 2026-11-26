@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/order.json';
 import { cityLine } from './address';
 import { SpreeNumber } from './common';
-import { Order, needsAction } from './order';
+import { needsAction, Order } from './order';
 
 const base = Order.parse(fixture);
 
@@ -18,8 +18,17 @@ describe('Order schema', () => {
   });
 
   it('maps unknown statuses from newer Spree versions to "unknown" instead of failing', () => {
-    const order = Order.parse({ ...fixture, status: 'archived', fulfillmentStatus: 'in_transit', paymentStatus: 'disputed' });
-    expect([order.status, order.fulfillmentStatus, order.paymentStatus]).toEqual(['unknown', 'unknown', 'unknown']);
+    const order = Order.parse({
+      ...fixture,
+      status: 'archived',
+      fulfillmentStatus: 'in_transit',
+      paymentStatus: 'disputed',
+    });
+    expect([order.status, order.fulfillmentStatus, order.paymentStatus]).toEqual([
+      'unknown',
+      'unknown',
+      'unknown',
+    ]);
   });
 
   it('rejects malformed Spree numbers and float money', () => {
@@ -59,7 +68,8 @@ describe('needsAction', () => {
 
 describe('cityLine', () => {
   it('formats city and region', () => {
-    expect(cityLine(base.shipAddress!)).toBe('Portland, OR');
+    if (!base.shipAddress) throw new Error('fixture has a ship address');
+    expect(cityLine(base.shipAddress)).toBe('Portland, OR');
     expect(cityLine({ city: 'Berlin', stateCode: null, countryIso: 'DE' })).toBe('Berlin, DE');
   });
 });

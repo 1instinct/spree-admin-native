@@ -41,6 +41,7 @@ export function ApiProvider({ session, children }: { session: Session | null; ch
 
   // Different store, different data: drop the cache when the store changes.
   const storeUrl = session?.probe.baseUrl ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: storeUrl is the trigger, not an input.
   useEffect(() => {
     queryClient.clear();
   }, [storeUrl, queryClient]);
