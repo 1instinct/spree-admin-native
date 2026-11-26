@@ -1,0 +1,16 @@
+{
+  "name": "dna-admin-native",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "contract": "node scripts/contract.mjs",
+    "spree:up": "node scripts/spree-up.mjs",
+    "changeset": "changeset"
+  }
+}

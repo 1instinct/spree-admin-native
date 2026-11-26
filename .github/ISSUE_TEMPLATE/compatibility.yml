@@ -1,0 +1,18 @@
+name: Compatibility report
+description: A feature doesn't work with your Spree version or extensions
+labels: [compatibility, triage]
+body:
+  - type: input
+    id: spree-version
+    attributes: { label: Spree version }
+    validations: { required: true }
+  - type: textarea
+    id: extensions
+    attributes: { label: Spree extensions installed, description: "From your Gemfile (spree_* gems)" }
+  - type: textarea
+    id: capabilities
+    attributes: { label: Capabilities shown, description: "More → About this store → Copy capabilities" }
+  - type: textarea
+    id: what
+    attributes: { label: What doesn't work }
+    validations: { required: true }
