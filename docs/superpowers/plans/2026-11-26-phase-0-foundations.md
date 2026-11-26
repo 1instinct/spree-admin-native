@@ -28,13 +28,13 @@ Expo SDK 58, Docker Compose (Spree matrix).
 | 1 Workspace tooling | Done | pnpm 10, Turborepo, Biome 2.6, Vitest 5, TS 5.9 (app uses Expo's TS 6) |
 | 2 Money | Done | bigint minor units, Intl formatting |
 | 3 Domain models | Done, revised | Order vocabulary changed to Spree 6's (`status`, `paymentStatus`, `fulfillmentStatus`, fulfillments) after reading `@spree/admin-sdk` 6.0.6; Spree 4 states map into it in the adapter |
-| 4 Docker matrix | In progress | Spree 4.2 on :3042 and Spree 6.0 on :3060 (`infra/spree`) |
+| 4 Docker matrix | Done | Spree 4.2.7 on :3042 (built) and 6.0.6 on :3060 (official image); `node scripts/spree-up.mjs`; findings in `infra/spree/FINDINGS.md`. Migrations renumbered at build so rebuilt images match existing databases |
 | 5 Transport | Done | Injected `fetch` instead of msw; same error kinds as BeeperNative |
 | 6 Capability probe | Done | Probes run in parallel; gem answer preferred (not probed first, to avoid an extra round trip). Admin v3 detected via unauthenticated `/api/v3/admin/auth/providers` |
-| 7 Auth | Partly done | OAuth password grant, client credentials, API key. Admin v3 JWT login waits on the 6.0 cookie/CSRF findings |
-| 8 Platform v2 orders | Written, verifying | Mapping is defensive until checked against 4.2 recordings |
-| 9 Admin v3 orders | Written, verifying | Typed against `@spree/admin-sdk` |
-| 10 Contract suite | Written | `pnpm contract --spree <version>`; generates `docs/compatibility.md` |
+| 7 Auth | Done | Spike answered: no password sign-in reaches admin data on 4.2. API v1 key (`X-Spree-Token`), Admin v3 secret key, Admin v3 JWT login with rotating refresh cookie (proven live), OAuth client credentials for Platform v2 |
+| 8 Spree 4.x orders | Done, revised | 4.2 has no Platform orders: new `api-v1` adapter, tested on recordings and live. The `platform-v2` adapter (4.4–5.x) stays written but unproven (ADR 0008) |
+| 9 Admin v3 orders | Done | Tested on recordings and live; numbers like `R1029-F1`; lookup by number goes through `q[number_eq]` |
+| 10 Contract suite | Done | 24 live tests green on 4.2 and 6.0 (API key and JWT runs); credentials read from `spree-up --json`, never stored |
 | 11 Router | Done | `store.probe`, `store.signIn`, `store.current`, `orders.list`, `orders.get`; `unstable_localLink` proven in tests and in a Hermes bundle |
 | 12 Tokens | Done | Contrast checks in tests; no Tailwind preset yet (app uses StyleSheet + tokens) |
 | 13 App shell | Done | Expo SDK 58, Native Tabs; distribution identity is JSON (Expo's config loader can't require TS at runtime) |

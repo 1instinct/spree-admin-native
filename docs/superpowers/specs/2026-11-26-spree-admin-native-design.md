@@ -61,7 +61,8 @@ optional companion pieces.
                  │ appRouter (@spree-native/api)  — procedures + capability middleware
                  ▼
         @spree-native/spree-sdk — transport · auth strategies · capability probe · adapters
-          ├─ adapter: platform-v2   (Spree 4.2 → 5.x with legacy v2)   OAuth2 bearer
+          ├─ adapter: api-v1        (Spree 4.2 → 4.3)                  X-Spree-Token
+          ├─ adapter: platform-v2   (Spree 4.4 → 5.x)                  OAuth2 bearer (app-bound)
           └─ adapter: admin-v3      (Spree 5.4 → 6.x)                  admin JWT or secret API key
                  │
                  ▼
@@ -127,28 +128,31 @@ Procedures declare what they need (`requireCapability('orders.refund')`). If mis
 throw `CAPABILITY_UNAVAILABLE` with a reason the UI shows in plain words, e.g. *"Refunds from
 the app need Spree 4.5 or the companion gem."*
 
-### 3.4 Compatibility targets (to be confirmed by contract tests)
+### 3.4 Compatibility (revised 2026-11-26 from live findings)
 
-| Spree | Preferred API | Auth | Push notifications |
+Established against Dockerised stores; details in `infra/spree/FINDINGS.md`, proven results in
+`docs/compatibility.md` (generated).
+
+| Spree | Admin API the app uses | Sign-in | Push notifications |
 | --- | --- | --- | --- |
-| 4.2 – 4.4 | Platform API v2 | OAuth2 (Doorkeeper `/spree_oauth/token`) | Companion gem, else background polling |
-| 4.5 – 4.10 | Platform API v2 | OAuth2 | Gem, or webhook subscribers + Relay |
-| 5.0 – 5.3 | Platform API v2 | OAuth2 | Gem, or Webhooks 2.0 (5.3) + Relay |
-| 5.4 – 5.x | Admin API v3 (v2 via `spree_legacy_api_v2`) | Admin JWT login or secret API key (`X-Spree-Api-Key`, scoped) | Gem, or webhook endpoints + Relay |
-| 6.0 + (current: 6.0.6, Oct 2026) | Admin API v3 | Admin JWT login (`/api/v3/admin/auth/login`) or secret API key | Gem, or webhook endpoints + Relay |
+| 4.2 – 4.3 | **API v1** (legacy REST; Platform v2 has no orders until 4.4.0) | Admin user's API key (`X-Spree-Token`), or QR pairing with the gem | Companion gem, else background polling |
+| 4.4 – 5.3 | Platform API v2 | OAuth application ID + secret with the `admin` scope | Gem, or Platform webhooks (4.4+) + Relay |
+| 5.4 – 5.x | Admin API v3 (v2 via `spree_legacy_api_v2`) | Email + password (JWT) or secret API key (`X-Spree-Api-Key`) | Gem, or webhook endpoints + Relay |
+| 6.0 + (current: 6.0.6, Oct 2026) | Admin API v3 | Email + password (JWT) or secret API key | Gem, or webhook endpoints + Relay |
 
-CI runs the `spree-sdk` contract suite against Dockerised Spree **4.2, 4.7, 4.10, 5.0, 5.3,
-5.5 and 6.0** with sample data. The matrix in the docs is generated from those runs.
+CI runs the `spree-sdk` contract suite against Dockerised Spree **4.2 and 6.0** today; 4.3, 4.10
+(Platform v2), 5.5 and later versions join the matrix in Phase 1.
 
-### 3.5 Authentication
+### 3.5 Authentication (revised)
 
 | Method | Works on | UX |
 | --- | --- | --- |
-| **Sign in with email + password** | Platform v2 (password grant, `admin` scope); Admin v3 (`POST /api/v3/admin/auth/login` → short-lived JWT, refresh via HttpOnly cookie + `X-CSRF-Token`) | Shopify-like. Phase 0 spikes: admin-scope tokens on 4.2, and cookie refresh under React Native's native cookie store on 6.0. |
-| **Scan pairing code** | Any, with the gem | "Pair device" button in Spree admin shows a QR; app scans; gem issues a scoped, revocable device token. Best UX, no password on the phone. |
-| **Paste API key / OAuth app** | admin-v3 keys, Platform client credentials | Fallback for power users and CI. |
+| **Email + password** | Admin v3 (5.4+): `POST /api/v3/admin/auth/login` → 5-minute JWT; 30-day HttpOnly refresh cookie that rotates on each refresh, no CSRF token. Proven live on 6.0. | Shopify-like. The app keeps the cookie value in the keychain and replays it on refresh; the OS cookie jar is the fallback. |
+| **API key** | API v1 (4.2–4.x): the admin's own Spree API key as `X-Spree-Token`. Admin v3: secret key `sk_…` as `X-Spree-Api-Key`. | Paste once. On 4.2–4.3 this is the only way without the gem: no OAuth grant reaches admin data. |
+| **OAuth application** | Platform v2 (4.4–5.x): client credentials, or password grant with the app's ID/secret. | For stores on the Platform API. |
+| **Scan pairing code** | Any, with the gem | "Pair device" in Spree admin shows a QR; the gem issues a scoped, revocable device token. Becomes the recommended path for 4.x stores. |
 
-Tokens live in `expo-secure-store`. Optional Face ID / fingerprint lock on open. Multiple
+Credentials live in `expo-secure-store`. Optional Face ID / fingerprint lock on open. Multiple
 stores and accounts are supported with a Shopify-style store switcher.
 
 ### 3.6 Data, caching and offline
@@ -349,8 +353,8 @@ Summary here; full detail in `docs/design/design-language.md`.
 
 | Risk / question | Plan |
 | --- | --- |
-| Platform API v2 on 4.2 may lack some admin actions (refunds, some payment actions) | Contract tests list gaps; gem provides shims; UI hides unsupported actions |
-| Password grant with `admin` scope behaviour on 4.2 | Phase 0 spike; fallback to pairing (gem) or OAuth app credentials |
+| Spree 4.2–4.3 have no Platform API and no refund endpoint (API v1 only has `payments/:id/credit`) | API v1 adapter; refunds on 4.x come from the gem; UI shows the reason when unavailable |
+| No password sign-in reaches admin data on 4.2 (answered by the Phase 0 spike) | API key sign-in now; QR pairing via the gem in Phase 1 |
 | `unstable_localLink` stability in RN | Phase 0 spike; small custom link as fallback |
 | Expo push tokens are tied to an app's EAS project; forks need their own | Gem stores the token's project; documented per distribution |
 | App Store review for an app that connects to arbitrary servers | Ship a demo store and reviewer credentials; clear onboarding copy |
