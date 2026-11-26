@@ -196,7 +196,7 @@ try {
       log(`==> seeding Spree ${v} scenario (infra/spree/${v}/seed.rb)`);
       const { out } = await rails(v, '/seed/seed.rb');
       const { summary, creds } = parseSeedOutput(out);
-      summary.forEach((l) => log(`  ${l}`));
+      for (const l of summary) log(`  ${l}`);
       entry.credentials = creds;
     }
     result[v] = entry;

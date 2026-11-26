@@ -33,10 +33,7 @@
         "noReactNativeRawText": {
           "level": "error",
           "options": {
-            "skip": [
-              "Label",
-              "NativeTabs.Trigger.Label"
-            ]
+            "skip": ["Label", "NativeTabs.Trigger.Label"]
           }
         }
       }
