@@ -1,0 +1,117 @@
+# Spree matrix for spree-admin-native contract tests and local development.
+#
+#   node scripts/spree-up.mjs 4.2|6.0|all     (preferred: builds, waits, seeds)
+#   docker compose -f infra/spree/docker-compose.yml up -d spree42 spree60
+#
+# Ports: Spree 4.2 -> http://localhost:3042, Spree 6.0 -> http://localhost:3060
+# Admin login on both: admin@example.com / spree123 (see infra/spree/README.md).
+#
+# Base images come from mirror.gcr.io (Google's pull-through mirror of Docker
+# Hub) to dodge anonymous Docker Hub rate limits. Set SPREE_IMAGE_REGISTRY=docker.io/library
+# to use Docker Hub directly.
+name: spree-matrix
+
+x-pg-health: &pg-health
+  test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
+  interval: 3s
+  timeout: 3s
+  retries: 40
+
+services:
+  # ---------------------------------------------------------------- Spree 4.2
+  spree42-db:
+    image: ${SPREE_IMAGE_REGISTRY:-mirror.gcr.io/library}/postgres:16-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - spree42_pg:/var/lib/postgresql/data
+    healthcheck: *pg-health
+
+  spree42:
+    image: spree-admin-native/spree:4.2.7
+    build:
+      context: ./4.2
+      # host network + optional proxy/CA only matter behind an intercepting
+      # proxy; they are harmless (and unused) everywhere else.
+      network: host
+      args:
+        IMAGE_REGISTRY: ${SPREE_IMAGE_REGISTRY:-mirror.gcr.io/library}
+        http_proxy: ${SPREE_BUILD_PROXY:-}
+        https_proxy: ${SPREE_BUILD_PROXY:-}
+      secrets:
+        - build_ca
+    depends_on:
+      spree42-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres@spree42-db:5432/spree42_development
+      RAILS_ENV: development
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: spree123
+    ports:
+      - "3042:3000"
+    volumes:
+      - ./4.2:/seed:ro
+      - spree42_storage:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null 'http://localhost:3000/api/v2/storefront/products?per_page=1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 120s
+
+  # ---------------------------------------------------------------- Spree 6.0
+  spree60-db:
+    image: ${SPREE_IMAGE_REGISTRY:-mirror.gcr.io/library}/postgres:18-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      - spree60_pg:/var/lib/postgresql
+    healthcheck: *pg-health
+
+  spree60:
+    # Official prebuilt image (same one spree_starter's docker-compose.yml uses):
+    # Rails 8.1 API + React dashboard at /dashboard, Ruby 4.0, Solid Queue in Puma.
+    image: ghcr.io/spree/spree:6.0.6
+    depends_on:
+      spree60-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres@spree60-db:5432/spree_production
+      # Fixed, public, local-only value: this store holds fixture data only.
+      SECRET_KEY_BASE: spree-admin-native-local-fixture-secret-key-base-not-for-production-0123456789abcdef
+      RAILS_FORCE_SSL: "false"
+      RAILS_ASSUME_SSL: "false"
+      SPREE_HOST: localhost:3060
+      # Spree 6 seeds only create an admin when both are set; otherwise they
+      # print a one-time /dashboard/setup link instead.
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: spree123
+      RAILS_LOG_TO_STDOUT: "1"
+      # No SMTP server in the matrix; mail delivery errors must not break seeds.
+      SMTP_HOST: ""
+    ports:
+      - "3060:3000"
+    volumes:
+      - ./6.0:/seed:ro
+      - spree60_storage:/rails/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost:3000/up || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+secrets:
+  build_ca:
+    # PEM bundle trusted during the 4.2 image build only (never copied into the
+    # image). Point SPREE_BUILD_CA_FILE at your proxy's CA bundle if you build
+    # behind a TLS-intercepting proxy; the default is an empty file.
+    file: ${SPREE_BUILD_CA_FILE:-/dev/null}
+
+volumes:
+  spree42_pg:
+  spree42_storage:
+  spree60_pg:
+  spree60_storage:

@@ -1,0 +1,25 @@
+# Spree 4.2 (vanilla upstream) on Rails 6.1 / Ruby 2.7.
+# Pins are deliberate: newer transitive gems break Rails 6.1 or Ruby 2.7.
+source 'https://rubygems.org'
+
+ruby '~> 2.7.0'
+
+gem 'rails', '6.1.7.10'
+gem 'pg', '~> 1.5'
+gem 'puma', '~> 5.6'
+gem 'sass-rails', '>= 6'
+gem 'listen', '~> 3.3'
+
+# concurrent-ruby 1.3.5 drops the implicit `require "logger"` that Rails 6.1
+# relies on (NameError: uninitialized constant ActiveSupport::LoggerThreadSafeLevel::Logger).
+gem 'concurrent-ruby', '1.3.4'
+
+# json 3.x removed options (quirks_mode) that ActiveSupport 6.1's encoder passes:
+# every JSON render 500s with "ArgumentError: unknown keyword: quirks_mode".
+gem 'json', '~> 2.7'
+
+gem 'spree', '4.2.7'
+gem 'spree_auth_devise', '4.3.4'
+gem 'spree_gateway', '3.9.4'
+
+gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]

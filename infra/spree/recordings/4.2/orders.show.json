@@ -1,0 +1,425 @@
+{
+  "id": 26,
+  "number": "R420000024",
+  "item_total": "180.95",
+  "total": "185.95",
+  "ship_total": "5.0",
+  "state": "complete",
+  "adjustment_total": "0.0",
+  "user_id": 8,
+  "created_at": "2026-11-06T14:21:00.000Z",
+  "updated_at": "2026-11-06T14:41:00.000Z",
+  "completed_at": "2026-11-06T14:41:00.000Z",
+  "payment_total": "185.95",
+  "shipment_state": "shipped",
+  "payment_state": "paid",
+  "email": "customer6@example.com",
+  "special_instructions": null,
+  "channel": "spree",
+  "included_tax_total": "0.0",
+  "additional_tax_total": "0.0",
+  "display_included_tax_total": "$0.00",
+  "display_additional_tax_total": "$0.00",
+  "tax_total": "0.0",
+  "currency": "USD",
+  "considered_risky": false,
+  "canceler_id": null,
+  "display_item_total": "$180.95",
+  "total_quantity": 5,
+  "display_total": "$185.95",
+  "display_ship_total": "$5.00",
+  "display_tax_total": "$0.00",
+  "display_adjustment_total": "$0.00",
+  "token": "[REDACTED order guest token]",
+  "checkout_steps": [
+    "address",
+    "delivery",
+    "payment",
+    "complete"
+  ],
+  "bill_address": {
+    "id": 49,
+    "firstname": "Barbara",
+    "lastname": "Liskov",
+    "full_name": "Barbara Liskov",
+    "address1": "123 Market Street",
+    "address2": null,
+    "city": "New York",
+    "zipcode": "10001",
+    "phone": "555-0123",
+    "company": null,
+    "alternative_phone": null,
+    "country_id": 224,
+    "state_id": 516,
+    "label": null,
+    "state_name": null,
+    "state_text": "NY",
+    "country": {
+      "id": 224,
+      "iso_name": "UNITED STATES",
+      "iso": "US",
+      "iso3": "USA",
+      "name": "United States",
+      "numcode": 840
+    },
+    "state": {
+      "id": 516,
+      "name": "New York",
+      "abbr": "NY",
+      "country_id": 224
+    }
+  },
+  "ship_address": {
+    "id": 50,
+    "firstname": "Barbara",
+    "lastname": "Liskov",
+    "full_name": "Barbara Liskov",
+    "address1": "123 Market Street",
+    "address2": null,
+    "city": "New York",
+    "zipcode": "10001",
+    "phone": "555-0123",
+    "company": null,
+    "alternative_phone": null,
+    "country_id": 224,
+    "state_id": 516,
+    "label": null,
+    "state_name": null,
+    "state_text": "NY",
+    "country": {
+      "id": 224,
+      "iso_name": "UNITED STATES",
+      "iso": "US",
+      "iso3": "USA",
+      "name": "United States",
+      "numcode": 840
+    },
+    "state": {
+      "id": 516,
+      "name": "New York",
+      "abbr": "NY",
+      "country_id": 224
+    }
+  },
+  "line_items": [
+    {
+      "id": 47,
+      "quantity": 2,
+      "price": "54.99",
+      "variant_id": 120,
+      "variant": {
+        "product_id": 4,
+        "id": 120,
+        "name": "Slim Fit Shirt",
+        "sku": "Shirts_slimfitshirt_54.99_dark_blue_xs",
+        "price": "54.99",
+        "weight": "0.0",
+        "height": null,
+        "width": null,
+        "depth": null,
+        "is_master": false,
+        "slug": "slim-fit-shirt",
+        "description": "Sed at cumque inventore mollitia. Distinctio quis accusantium voluptatem fuga nostrum neque eaque quos. Animi perferendis praesentium voluptatem nesciunt deserunt iure. Quaerat ratione voluptate vel similique.",
+        "track_inventory": true,
+        "cost_price": "54.99",
+        "option_values": [
+          {
+            "id": 13,
+            "name": "dark_blue",
+            "presentation": "#00008b",
+            "option_type_name": "color",
+            "option_type_id": 1,
+            "option_type_presentation": "Color"
+          },
+          {
+            "id": 23,
+            "name": "xs",
+            "presentation": "XS",
+            "option_type_name": "size",
+            "option_type_id": 3,
+            "option_type_presentation": "Size"
+          }
+        ],
+        "images": [],
+        "display_price": "$54.99",
+        "options_text": "Color: dark_blue, Size: XS",
+        "in_stock": true,
+        "is_backorderable": true,
+        "is_orderable": true,
+        "total_on_hand": 20,
+        "is_destroyed": false
+      },
+      "adjustments": [],
+      "single_display_amount": "$54.99",
+      "display_amount": "$109.98",
+      "total": "109.98"
+    },
+    {
+      "id": 48,
+      "quantity": 2,
+      "price": "14.99",
+      "variant_id": 158,
+      "variant": {
+        "product_id": 42,
+        "id": 158,
+        "name": "Skater Skirt",
+        "sku": "Skirts_skaterskirt_14.99_brown_mini_xs",
+        "price": "14.99",
+        "weight": "0.0",
+        "height": null,
+        "width": null,
+        "depth": null,
+        "is_master": false,
+        "slug": "skater-skirt",
+        "description": "Totam autem minus magni odit alias. Expedita provident fuga ipsam quo illo delectus ea amet. Ullam ipsa officiis veniam qui eligendi adipisci nam. Tenetur esse aut quia laboriosam. Optio enim accusantium odio qui eaque quis.",
+        "track_inventory": true,
+        "cost_price": "14.99",
+        "option_values": [
+          {
+            "id": 5,
+            "name": "brown",
+            "presentation": "#8B4513",
+            "option_type_name": "color",
+            "option_type_id": 1,
+            "option_type_presentation": "Color"
+          },
+          {
+            "id": 20,
+            "name": "mini",
+            "presentation": "Mini",
+            "option_type_name": "length",
+            "option_type_id": 2,
+            "option_type_presentation": "Length"
+          },
+          {
+            "id": 23,
+            "name": "xs",
+            "presentation": "XS",
+            "option_type_name": "size",
+            "option_type_id": 3,
+            "option_type_presentation": "Size"
+          }
+        ],
+        "images": [],
+        "display_price": "$14.99",
+        "options_text": "Color: brown, Length: Mini, and Size: XS",
+        "in_stock": true,
+        "is_backorderable": true,
+        "is_orderable": true,
+        "total_on_hand": 32,
+        "is_destroyed": false
+      },
+      "adjustments": [],
+      "single_display_amount": "$14.99",
+      "display_amount": "$29.98",
+      "total": "29.98"
+    },
+    {
+      "id": 49,
+      "quantity": 1,
+      "price": "40.99",
+      "variant_id": 185,
+      "variant": {
+        "product_id": 69,
+        "id": 185,
+        "name": "Printed Shirt",
+        "sku": "ShirtsandBlouses_printedshirt_40.99_green_xs",
+        "price": "40.99",
+        "weight": "0.0",
+        "height": null,
+        "width": null,
+        "depth": null,
+        "is_master": false,
+        "slug": "printed-shirt",
+        "description": "Adipisci culpa occaecati ullam doloremque. Odit natus soluta consequatur aspernatur nulla. Quae expedita deleniti dolore nobis at animi explicabo sequi. Quaerat fuga magnam architecto voluptatum. Veritatis harum quam assumenda maiores.",
+        "track_inventory": true,
+        "cost_price": "40.99",
+        "option_values": [
+          {
+            "id": 6,
+            "name": "green",
+            "presentation": "#228C22",
+            "option_type_name": "color",
+            "option_type_id": 1,
+            "option_type_presentation": "Color"
+          },
+          {
+            "id": 23,
+            "name": "xs",
+            "presentation": "XS",
+            "option_type_name": "size",
+            "option_type_id": 3,
+            "option_type_presentation": "Size"
+          }
+        ],
+        "images": [],
+        "display_price": "$40.99",
+        "options_text": "Color: green, Size: XS",
+        "in_stock": true,
+        "is_backorderable": true,
+        "is_orderable": true,
+        "total_on_hand": 33,
+        "is_destroyed": false
+      },
+      "adjustments": [],
+      "single_display_amount": "$40.99",
+      "display_amount": "$40.99",
+      "total": "40.99"
+    }
+  ],
+  "payments": [
+    {
+      "id": 26,
+      "source_type": null,
+      "source_id": null,
+      "amount": "185.95",
+      "display_amount": "$185.95",
+      "payment_method_id": 3,
+      "state": "completed",
+      "avs_response": null,
+      "created_at": "2026-11-26T13:41:53.088Z",
+      "updated_at": "2026-11-26T13:41:53.421Z",
+      "number": "P5BGJ27A",
+      "payment_method": {
+        "id": 3,
+        "name": "Check"
+      },
+      "source": null
+    }
+  ],
+  "shipments": [
+    {
+      "id": 26,
+      "tracking": null,
+      "number": "H54274278639",
+      "cost": "5.0",
+      "shipped_at": "2026-11-26T13:41:53.508Z",
+      "state": "shipped",
+      "shipping_rates": [
+        {
+          "id": 265,
+          "name": "UPS Ground (USD)",
+          "cost": "5.0",
+          "selected": true,
+          "shipping_method_id": 1,
+          "shipping_method_code": null,
+          "display_cost": "$5.00"
+        },
+        {
+          "id": 266,
+          "name": "UPS Two Day (USD)",
+          "cost": "10.0",
+          "selected": false,
+          "shipping_method_id": 2,
+          "shipping_method_code": null,
+          "display_cost": "$10.00"
+        },
+        {
+          "id": 267,
+          "name": "UPS One Day (USD)",
+          "cost": "15.0",
+          "selected": false,
+          "shipping_method_id": 3,
+          "shipping_method_code": null,
+          "display_cost": "$15.00"
+        }
+      ],
+      "selected_shipping_rate": {
+        "id": 265,
+        "name": "UPS Ground (USD)",
+        "cost": "5.0",
+        "selected": true,
+        "shipping_method_id": 1,
+        "shipping_method_code": null,
+        "display_cost": "$5.00"
+      },
+      "shipping_methods": [
+        {
+          "id": 1,
+          "code": null,
+          "name": "UPS Ground (USD)",
+          "zones": [
+            {
+              "id": 3,
+              "name": "North America",
+              "description": "USA + Canada"
+            }
+          ],
+          "shipping_categories": [
+            {
+              "id": 1,
+              "name": "Default"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "code": null,
+          "name": "UPS Two Day (USD)",
+          "zones": [
+            {
+              "id": 3,
+              "name": "North America",
+              "description": "USA + Canada"
+            }
+          ],
+          "shipping_categories": [
+            {
+              "id": 1,
+              "name": "Default"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "code": null,
+          "name": "UPS One Day (USD)",
+          "zones": [
+            {
+              "id": 3,
+              "name": "North America",
+              "description": "USA + Canada"
+            }
+          ],
+          "shipping_categories": [
+            {
+              "id": 1,
+              "name": "Default"
+            }
+          ]
+        }
+      ],
+      "manifest": [
+        {
+          "variant_id": 120,
+          "quantity": 2,
+          "states": {
+            "shipped": 2
+          }
+        },
+        {
+          "variant_id": 158,
+          "quantity": 2,
+          "states": {
+            "shipped": 2
+          }
+        },
+        {
+          "variant_id": 185,
+          "quantity": 1,
+          "states": {
+            "shipped": 1
+          }
+        }
+      ],
+      "adjustments": [],
+      "order_id": "R420000024",
+      "stock_location_name": "default"
+    }
+  ],
+  "adjustments": [],
+  "credit_cards": [],
+  "permissions": {
+    "can_update": true
+  }
+}
