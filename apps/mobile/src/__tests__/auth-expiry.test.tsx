@@ -5,6 +5,17 @@ import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { ApiProvider, useTRPC } from '@/trpc/trpc';
 
+const unused = async (): Promise<never> => {
+  throw new Error('unused');
+};
+const unusedActions = {
+  ship: unused,
+  capture: unused,
+  cancel: unused,
+  refund: unused,
+  refundReasons: unused,
+};
+
 const session = (kind: 'auth' | 'network'): Session => ({
   probe: {
     baseUrl: 'https://shop.test',
@@ -27,6 +38,7 @@ const session = (kind: 'auth' | 'network'): Session => ({
       get: async () => {
         throw new Error('unused');
       },
+      ...unusedActions,
     },
   },
 });
@@ -78,6 +90,7 @@ describe('switching stores', () => {
           get: async () => {
             throw new Error('unused');
           },
+          ...unusedActions,
         },
       },
     });

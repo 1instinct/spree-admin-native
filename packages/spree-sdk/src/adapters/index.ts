@@ -1,5 +1,5 @@
 import type { ApiFamily } from '../capabilities/types';
-import { companion } from '../companion';
+import { type CompanionPort, companion } from '../companion';
 import type { SpreeAdapter } from '../ports';
 import type { Transport } from '../transport';
 import { adminV3Orders } from './admin-v3/orders';
@@ -16,14 +16,15 @@ export function createAdapter(
   transport: Transport,
   options: { companion?: boolean } = {},
 ): SpreeAdapter {
-  const base = baseAdapter(family, transport);
-  return options.companion ? { ...base, companion: companion(transport) } : base;
+  const gem = options.companion ? companion(transport) : undefined;
+  const base = baseAdapter(family, transport, gem);
+  return gem ? { ...base, companion: gem } : base;
 }
 
-function baseAdapter(family: ApiFamily, transport: Transport): SpreeAdapter {
+function baseAdapter(family: ApiFamily, transport: Transport, gem?: CompanionPort): SpreeAdapter {
   switch (family) {
     case 'api-v1':
-      return { family, orders: apiV1Orders(transport) };
+      return { family, orders: apiV1Orders(transport, gem) };
     case 'platform-v2':
       return { family, orders: platformV2Orders(transport) };
     case 'admin-v3':

@@ -9,10 +9,10 @@ import type { SpreeAdapter } from '../src/ports';
 import { baseTransport, enabled, env, results, signIn } from './env';
 
 /** Wrap a test so its outcome is recorded against a capability. */
-function proves(capability: string, name: string, fn: () => Promise<void>) {
-  it(`[${capability}] ${name}`, async () => {
+function proves(capability: string, name: string, fn: (skip: (why: string) => never) => Promise<void>) {
+  it(`[${capability}] ${name}`, async (ctx) => {
     try {
-      await fn();
+      await fn((why) => ctx.skip(why) as never);
       if (results[capability] !== 'fail') results[capability] = 'pass';
     } catch (e) {
       results[capability] = 'fail';
@@ -131,5 +131,66 @@ describe.runIf(enabled)(`contract: Spree ${env.label}`, () => {
     if (!sample) throw new Error('no orders');
     const page = await adapter.orders.list({ filter: 'all', query: sample.number });
     expect(page.items.map((o) => o.number)).toContain(sample.number);
+  });
+
+  // --- Actions. These change the store's data (reset with `spree-up --reset`). ---------------
+
+  /** Placed orders, newest first, with full detail (lists can omit payments or fulfillments). */
+  async function candidates(filter: 'all' | 'unfulfilled' | 'unpaid', n = 40): Promise<Order[]> {
+    const page = await adapter.orders.list({ filter, perPage: n });
+    return Promise.all(page.items.map((o) => adapter.orders.get(o.number)));
+  }
+
+  proves('shipments.ship', 'ships a ready fulfillment with a tracking number', async (skip) => {
+    const orders = await candidates('unfulfilled');
+    const order = orders.find(
+      (o) => o.paymentStatus === 'paid' && o.fulfillments.some((f) => f.status === 'ready'),
+    );
+    if (!order) return skip('no paid order with a ready fulfillment');
+    const fulfillment = order.fulfillments.find((f) => f.status === 'ready')!;
+    const tracking = `CT${Date.now()}`;
+    const after = await adapter.orders.ship(order, fulfillment, { tracking });
+    const shipped = after.fulfillments.find((f) => f.id === fulfillment.id);
+    expect(shipped?.status).toBe('fulfilled');
+    expect(shipped?.trackingNumber ?? shipped?.trackingUrl).toContain(tracking);
+  });
+
+  proves('orders.capture', 'captures a pending payment', async (skip) => {
+    const orders = await candidates('unpaid');
+    const order = orders.find((o) => o.status === 'placed' && o.payments.some((p) => p.status === 'pending'));
+    if (!order) return skip('no order with a pending payment');
+    const payment = order.payments.find((p) => p.status === 'pending')!;
+    const after = await adapter.orders.capture(order, payment);
+    expect(after.payments.find((p) => p.id === payment.id)?.status).toBe('completed');
+  });
+
+  proves('orders.refund', 'lists refund reasons and refunds part of a payment', async (skip) => {
+    const reasons = await adapter.orders.refundReasons();
+    expect(reasons.length).toBeGreaterThan(0);
+    const orders = await candidates('all');
+    const order = orders.find(
+      (o) =>
+        o.status === 'placed' &&
+        o.payments.some((p) => p.status === 'completed' && Number(p.amount.amount) >= 2),
+    );
+    if (!order) return skip('no order with a completed payment');
+    const payment = order.payments.find((p) => p.status === 'completed' && Number(p.amount.amount) >= 2)!;
+    const after = await adapter.orders.refund(order, {
+      payment,
+      amount: '1.00',
+      reasonId: reasons[0]?.id ?? null,
+    });
+    expect(after.number).toBe(order.number);
+    expect(Number(after.paymentTotal.amount)).toBeLessThan(Number(order.paymentTotal.amount));
+  });
+
+  proves('orders.cancel', 'cancels an open order', async (skip) => {
+    const orders = await candidates('unfulfilled');
+    const order = orders.find(
+      (o) => o.status === 'placed' && o.fulfillments.every((f) => f.status !== 'fulfilled'),
+    );
+    if (!order) return skip('no open order to cancel');
+    const after = await adapter.orders.cancel(order);
+    expect(after.status).toBe('canceled');
   });
 });

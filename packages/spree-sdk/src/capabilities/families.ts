@@ -16,10 +16,9 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
     'products.read',
     'customers.read',
   ],
+  // Read-only until a Platform v2 store is in the contract suite (actions throw `capability`).
   'platform-v2': [
     'orders.read',
-    'orders.cancel',
-    'shipments.ship',
     'products.read',
     'products.write',
     'inventory.adjust',

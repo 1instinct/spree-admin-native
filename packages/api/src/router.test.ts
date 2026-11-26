@@ -28,6 +28,11 @@ function adapter(overrides: Partial<SpreeAdapter['orders']> = {}): SpreeAdapter 
     orders: {
       list: vi.fn(async () => ({ items: [order], nextCursor: null, totalCount: 1 })),
       get: vi.fn(async () => order),
+      ship: vi.fn(async () => order),
+      capture: vi.fn(async () => order),
+      cancel: vi.fn(async () => order),
+      refund: vi.fn(async () => order),
+      refundReasons: vi.fn(async () => [{ id: '1', name: 'Return processing' }]),
       ...overrides,
     },
   };
@@ -222,6 +227,53 @@ describe('pairing and companion procedures', () => {
     expect(summary).toHaveBeenCalled();
     await expect(createCaller(ctx(['orders.read'], a)).dashboard.summary()).rejects.toMatchObject({
       code: 'PRECONDITION_FAILED',
+    });
+  });
+
+  describe('order actions', () => {
+    const ref = { id: order.id, number: order.number };
+    const payment = { id: '7', number: 'PABC1234' };
+
+    it('ships a fulfillment with a trimmed tracking number', async () => {
+      const a = adapter();
+      const res = await createCaller(ctx(['orders.read', 'shipments.ship'], a)).orders.ship({
+        order: ref,
+        fulfillment: { id: '3', number: 'H123456' },
+        tracking: ' 1Z999 ',
+      });
+      expect(res.number).toBe(order.number);
+      expect(a.orders.ship).toHaveBeenCalledWith(ref, { id: '3', number: 'H123456' }, { tracking: '1Z999' });
+    });
+
+    it('refuses actions the store lacks', async () => {
+      const a = adapter();
+      await expect(
+        createCaller(ctx(['orders.read'], a)).orders.capture({ order: ref, payment }),
+      ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+      expect(a.orders.capture).not.toHaveBeenCalled();
+    });
+
+    it('captures and cancels', async () => {
+      const a = adapter();
+      const caller = createCaller(ctx(['orders.read', 'orders.capture', 'orders.cancel'], a));
+      await caller.orders.capture({ order: ref, payment });
+      await caller.orders.cancel({ order: ref });
+      expect(a.orders.capture).toHaveBeenCalledWith(ref, payment);
+      expect(a.orders.cancel).toHaveBeenCalledWith(ref);
+    });
+
+    it('refunds a positive decimal amount with an optional reason', async () => {
+      const a = adapter();
+      const caller = createCaller(ctx(['orders.read', 'orders.refund'], a));
+      await caller.orders.refund({ order: ref, payment, amount: '12.50', reasonId: '1' });
+      expect(a.orders.refund).toHaveBeenCalledWith(ref, { payment, amount: '12.50', reasonId: '1' });
+      await expect(caller.orders.refund({ order: ref, payment, amount: '0' })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+      await expect(caller.orders.refund({ order: ref, payment, amount: '1,5' })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+      expect(await caller.orders.refundReasons()).toEqual([{ id: '1', name: 'Return processing' }]);
     });
   });
 });
