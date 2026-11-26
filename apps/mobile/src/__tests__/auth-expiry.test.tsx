@@ -1,5 +1,10 @@
 import type { Session } from '@instincts/spree-api';
-import { SpreeError } from '@instincts/spree-sdk';
+import {
+  SpreeError,
+  unsupportedCustomers,
+  unsupportedProducts,
+  unsupportedPromotions,
+} from '@instincts/spree-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
@@ -7,6 +12,11 @@ import { ApiProvider, useTRPC } from '@/trpc/trpc';
 
 const unused = async (): Promise<never> => {
   throw new Error('unused');
+};
+const unusedAreas = {
+  products: unsupportedProducts,
+  customers: unsupportedCustomers,
+  promotions: unsupportedPromotions,
 };
 const unusedActions = {
   ship: unused,
@@ -40,6 +50,7 @@ const session = (kind: 'auth' | 'network'): Session => ({
       },
       ...unusedActions,
     },
+    ...unusedAreas,
   },
 });
 
@@ -92,6 +103,7 @@ describe('switching stores', () => {
           },
           ...unusedActions,
         },
+        ...unusedAreas,
       },
     });
     const view = await render(

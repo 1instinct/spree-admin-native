@@ -1,5 +1,12 @@
 import { Order } from '@instincts/spree-domain';
-import { type SpreeAdapter, SpreeError, type StoreProbe } from '@instincts/spree-sdk';
+import {
+  type SpreeAdapter,
+  SpreeError,
+  type StoreProbe,
+  unsupportedCustomers,
+  unsupportedProducts,
+  unsupportedPromotions,
+} from '@instincts/spree-sdk';
 import { createTRPCClient, localLink } from '@trpc/client';
 import { TRPCError } from '@trpc/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -35,6 +42,9 @@ function adapter(overrides: Partial<SpreeAdapter['orders']> = {}): SpreeAdapter 
       refundReasons: vi.fn(async () => [{ id: '1', name: 'Return processing' }]),
       ...overrides,
     },
+    products: unsupportedProducts,
+    customers: unsupportedCustomers,
+    promotions: unsupportedPromotions,
   };
 }
 
