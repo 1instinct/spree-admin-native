@@ -1,5 +1,5 @@
-import { Order } from '@spree-native/domain';
-import { type SpreeAdapter, SpreeError, type StoreProbe } from '@spree-native/spree-sdk';
+import { Order } from '@instincts/spree-domain';
+import { type SpreeAdapter, SpreeError, type StoreProbe } from '@instincts/spree-sdk';
 import { createTRPCClient, localLink } from '@trpc/client';
 import { TRPCError } from '@trpc/server';
 import { describe, expect, it, vi } from 'vitest';

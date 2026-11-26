@@ -1,5 +1,5 @@
 {
-  "name": "@spree-native/spree-sdk",
+  "name": "@instincts/spree-sdk",
   "version": "0.1.0",
   "description": "Version-adaptive Spree Commerce client for Spree 4.2 to 6.x: transport, errors, retries, store detection, sign-in and order adapters.",
   "keywords": [
@@ -36,12 +36,12 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@spree-native/domain": "workspace:^",
+    "@instincts/spree-domain": "workspace:^",
     "@spree/admin-sdk": "^6.0.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@spree-native/config": "workspace:*",
+    "@instincts/spree-config": "workspace:*",
     "@types/node": "^26.6.11",
     "tsup": "^9.0.0"
   },

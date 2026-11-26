@@ -1,5 +1,5 @@
-import type { Session } from '@spree-native/api';
-import { SpreeError } from '@spree-native/spree-sdk';
+import type { Session } from '@instincts/spree-api';
+import { SpreeError } from '@instincts/spree-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';

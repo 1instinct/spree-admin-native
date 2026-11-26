@@ -1,5 +1,5 @@
-import { type AppRouter, appRouter, type Session } from '@spree-native/api';
-import { shouldRetry } from '@spree-native/spree-sdk';
+import { type AppRouter, appRouter, type Session } from '@instincts/spree-api';
+import { shouldRetry } from '@instincts/spree-sdk';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, localLink } from '@trpc/client';
 import { createTRPCContext } from '@trpc/tanstack-react-query';

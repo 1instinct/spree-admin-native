@@ -1,6 +1,6 @@
 name: Release to npm
 # Publishes every public package under packages/ whose version is not on npm yet.
-# Needs the NPM_TOKEN repository secret (npm granular token with publish rights on @spree-native).
+# Needs the NPM_TOKEN repository secret (npm granular token with publish rights on the @instincts scope).
 on:
   workflow_dispatch:
     inputs:

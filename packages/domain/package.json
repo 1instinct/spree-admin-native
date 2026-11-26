@@ -1,5 +1,5 @@
 {
-  "name": "@spree-native/domain",
+  "name": "@instincts/spree-domain",
   "version": "0.1.0",
   "description": "Version-neutral Spree Commerce models (zod): money, orders, products, catalog, customers. Shared by Spree Admin Native and expo-spree.",
   "keywords": [
@@ -38,7 +38,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@spree-native/config": "workspace:*",
+    "@instincts/spree-config": "workspace:*",
     "tsup": "^9.0.0"
   },
   "publishConfig": {

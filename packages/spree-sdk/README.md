@@ -1,4 +1,4 @@
-# @spree-native/spree-sdk
+# @instincts/spree-sdk
 
 A Spree Commerce admin client that works with Spree 4.2 through 6.x: it finds out which admin
 API a store has and talks to it through one interface.
@@ -10,7 +10,7 @@ API a store has and talks to it through one interface.
 | 5.4 – 6.x | Admin API v3    | Email + password (JWT) or secret key |
 
 ```sh
-npm install @spree-native/spree-sdk @spree-native/domain zod
+npm install @instincts/spree-sdk @instincts/spree-domain zod
 ```
 
 See the exported `probeStore`, `createTransport`, the `auth` helpers and `createAdapter`; the

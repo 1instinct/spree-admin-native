@@ -8,7 +8,7 @@ store, fonts, local notifications), so no development build is needed to try it.
 ```sh
 pnpm install
 node scripts/spree-up.mjs 4.2          # or point at a real store
-pnpm --filter @spree-native/mobile start
+pnpm --filter @instincts/spree-mobile start
 ```
 
 Scan the QR code with Expo Go (SDK 58). The phone can't reach `localhost`: connect to the
@@ -35,13 +35,16 @@ Snack runs a single project from npm packages; it can't use this pnpm workspace,
 
 ## Publish to npm
 
-| Package | Repo | Scope to claim on npm |
-| --- | --- | --- |
-| `@spree-native/domain` | spree-admin-native | `@spree-native` (org) |
-| `@spree-native/spree-sdk` | spree-admin-native | `@spree-native` |
-| `@spree-native/ui` | spree-admin-native | `@spree-native` |
-| `@expo-spree/storefront` | expo-spree | `@expo-spree` (org) |
-| `expo-spree` | expo-spree | unscoped (name free as of 2026-11-26) |
+| Package | Repo |
+| --- | --- |
+| `@instincts/spree-domain` | spree-admin-native |
+| `@instincts/spree-sdk` | spree-admin-native |
+| `@instincts/spree-ui` | spree-admin-native |
+| `@instincts/expo-spree-storefront` | expo-spree |
+| `expo-spree` (unscoped) | expo-spree |
+
+Scoped packages publish to the `instincts` npm org; forks publishing their own builds change
+the scope.
 
 The packages build to `dist/` with tsup (ESM, CommonJS and `.d.ts`); `publishConfig` points
 `exports` at the build only when publishing, so the workspace keeps using the TypeScript source.
@@ -50,14 +53,14 @@ Tarballs are checked in a fresh project with ESM `import`, CommonJS `require` an
 
 To publish:
 
-1. **npm orgs** `spree-native` and `expo-spree` on the publishing npm account (free orgs for
-   public packages).
-2. **`NPM_TOKEN` secret** in both GitHub repos: an npm *granular access token* with read and
-   write on both scopes (and "bypass 2FA" so CI can publish).
+1. **npm org** `instincts`, with the publishing account as a member.
+2. **`NPM_TOKEN` secret** for both GitHub repos (an organization secret on `1instinct` covers
+   both): an npm *granular access token* with read and write on the `@instincts` scope and on
+   `expo-spree`, with "bypass 2FA" so CI can publish.
 3. **Run "Release to npm"** (`.github/workflows/release.yml`) from the Actions tab: first with
    *dry run* on, then off. It builds, lints, typechecks, tests and publishes every package
    under `packages/` whose version isn't on npm yet, with provenance. spree-admin-native goes
-   first, since expo-spree's packages depend on `@spree-native/*`.
+   first, since expo-spree's packages depend on `@instincts/spree-*`.
 4. **Next versions** with Changesets (already a dev dependency): `pnpm changeset`, then
    `pnpm changeset version`, commit, and run the workflow again. GitHub immutable releases are
    fine with this; tags are never moved.

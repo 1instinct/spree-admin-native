@@ -1,5 +1,5 @@
 {
-  "name": "@spree-native/ui",
+  "name": "@instincts/spree-ui",
   "version": "0.1.0",
   "description": "Design tokens (\"The Counter\") and themes for Spree Admin Native and expo-spree, with WCAG contrast checks.",
   "keywords": [
@@ -35,7 +35,7 @@
     "build": "tsup"
   },
   "devDependencies": {
-    "@spree-native/config": "workspace:*",
+    "@instincts/spree-config": "workspace:*",
     "tsup": "^9.0.0"
   },
   "publishConfig": {

@@ -51,16 +51,16 @@ optional companion pieces.
 
 ```
 ┌────────────────────────── apps/mobile (Expo SDK 58, Expo Router) ──────────────────────────┐
-│ Screens ── @spree-native/ui (tokens, primitives, commerce patterns)                           │
+│ Screens ── @instincts/spree-ui (tokens, primitives, commerce patterns)                           │
 │    │                                                                                        │
 │ @trpc/tanstack-react-query  ── TanStack Query cache (persisted to MMKV)                    │
 │    │                                                                                        │
 │ tRPC link chain:  splitLink ─┬─ localLink  → appRouter runs IN the app (default)           │
 │                              └─ httpBatchStreamLink → Relay (optional, self-hosted)        │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
-                 │ appRouter (@spree-native/api)  — procedures + capability middleware
+                 │ appRouter (@instincts/spree-api)  — procedures + capability middleware
                  ▼
-        @spree-native/spree-sdk — transport · auth strategies · capability probe · adapters
+        @instincts/spree-sdk — transport · auth strategies · capability probe · adapters
           ├─ adapter: api-v1        (Spree 4.2 → 4.3)                  X-Spree-Token
           ├─ adapter: platform-v2   (Spree 4.4 → 5.x)                  OAuth2 bearer (app-bound)
           └─ adapter: admin-v3      (Spree 5.4 → 6.x)                  admin JWT or secret API key
@@ -88,13 +88,13 @@ v11; Phase 0 spike confirms it in React Native, fallback is a 40-line custom lin
 | `apps/mobile` | — | Expo app. Routes, screens, notification handling, secure storage. |
 | `apps/relay` | — | Optional Node service (Hono + tRPC fetch adapter). Webhook ingest, push fan-out, scheduled digests, extension proxy. Docker image + one-click deploys. |
 | `apps/docs` | — | Docs site (Starlight). Generated compatibility matrix lives here. |
-| `packages/domain` | `@spree-native/domain` | zod schemas for normalised models: `Order`, `LineItem`, `Shipment`, `Payment`, `Refund`, `Product`, `Variant`, `StockItem`, `Customer`, `Address`, `Promotion`, `Store`, `Money`. |
-| `packages/spree-sdk` | `@spree-native/spree-sdk` | Framework-free Spree client: fetch transport, retries, auth strategies, capability probe, adapters mapping Spree payloads to domain models. Usable outside the app (CLI, scripts, other projects). |
-| `packages/api` | `@spree-native/api` | tRPC `appRouter`, context, `requireCapability` middleware, typed errors. |
-| `packages/ui` | `@spree-native/ui` | Design tokens (one source → TS + NativeWind preset), primitives, commerce patterns (`ResourceList`, `MoneyText`, `StatusBadge`, `Timeline`, `ActionSheet`). |
-| `packages/extension-sdk` | `@spree-native/extension-sdk` | `defineExtension()`, slot types, permission model, Blocks schema. |
-| `packages/config` | `@spree-native/config` | Shared tsconfig, lint, test presets. |
-| `extensions/*` | `@spree-native/ext-*` | First-party extensions (analytics, reviews, digital goods, …). |
+| `packages/domain` | `@instincts/spree-domain` | zod schemas for normalised models: `Order`, `LineItem`, `Shipment`, `Payment`, `Refund`, `Product`, `Variant`, `StockItem`, `Customer`, `Address`, `Promotion`, `Store`, `Money`. |
+| `packages/spree-sdk` | `@instincts/spree-sdk` | Framework-free Spree client: fetch transport, retries, auth strategies, capability probe, adapters mapping Spree payloads to domain models. Usable outside the app (CLI, scripts, other projects). |
+| `packages/api` | `@instincts/spree-api` | tRPC `appRouter`, context, `requireCapability` middleware, typed errors. |
+| `packages/ui` | `@instincts/spree-ui` | Design tokens (one source → TS + NativeWind preset), primitives, commerce patterns (`ResourceList`, `MoneyText`, `StatusBadge`, `Timeline`, `ActionSheet`). |
+| `packages/extension-sdk` | `@instincts/spree-extension-sdk` | `defineExtension()`, slot types, permission model, Blocks schema. |
+| `packages/config` | `@instincts/spree-config` | Shared tsconfig, lint, test presets. |
+| `extensions/*` | `@instincts/spree-ext-*` | First-party extensions (analytics, reviews, digital goods, …). |
 | `gems/spree_admin_native` | `spree_admin_native` | Optional Rails engine for Spree ≥ 4.2 (see §6). |
 | `distributions/default` | — | The upstream distribution: name, icons, theme, enabled extensions, EAS config. |
 
@@ -315,7 +315,7 @@ Summary here; full detail in `docs/design/design-language.md`.
 | App runtime | Expo SDK 58, React Native New Architecture, Expo Router (Native Tabs) | Current stable SDK; native tabs and file routes; EAS Build/Update/Submit |
 | Contract | tRPC v11 + `@trpc/tanstack-react-query` | Typed, local or remote, TanStack Query native |
 | Validation | zod 4 | Shared by domain, router and Blocks schema |
-| Styling | NativeWind with tokens from `@spree-native/ui` (CSS variables for runtime themes) | Same Tailwind vocabulary as `dna-frontend`; theme swap per distribution |
+| Styling | NativeWind with tokens from `@instincts/spree-ui` (CSS variables for runtime themes) | Same Tailwind vocabulary as `dna-frontend`; theme swap per distribution |
 | Lists | FlashList v2 | Large order/product lists |
 | Motion | Reanimated 4, Gesture Handler | Swipe actions, sheets |
 | Charts | Victory Native (Skia) | Sparklines and analytics |
@@ -367,7 +367,7 @@ Summary here; full detail in `docs/design/design-language.md`.
 2. Beeper fork repo (`Beeper-Buzz/beeper-admin-native` assumed). Prefer a GitHub **fork** over "Use this template": template copies have no shared history, so upstream sync needs `--allow-unrelated-histories` once.
 3. ~~Gem location~~ Decided: `gems/spree_admin_native` in this monorepo.
 4. Whether to apply to have the app listed as a Spree community integration.
-5. Claim the `@spree-native` npm org before the first package publish.
+5. Claim the `@instincts` npm org before the first package publish.
 
 ## 15. Storefront kit (`expo-spree`)
 
