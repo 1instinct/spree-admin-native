@@ -1,0 +1,22 @@
+{
+  "name": "@spree-native/spree-sdk",
+  "version": "0.0.0",
+  "description": "Version-adaptive Spree Commerce client (Spree 4.2 → 6.x): transport, auth, capability probe, adapters",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@spree-native/domain": "workspace:*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@spree-native/config": "workspace:*"
+  }
+}
