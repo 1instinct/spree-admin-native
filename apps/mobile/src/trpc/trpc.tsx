@@ -46,6 +46,9 @@ export function ApiProvider({ session, children }: { session: Session | null; ch
     queryClient.clear();
   }, [storeUrl, queryClient]);
 
+  // Drop queries (and their GC timers) when the provider goes away.
+  useEffect(() => () => queryClient.clear(), [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
