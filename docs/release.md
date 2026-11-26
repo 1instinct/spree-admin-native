@@ -43,20 +43,27 @@ Snack runs a single project from npm packages; it can't use this pnpm workspace,
 | `@expo-spree/storefront` | expo-spree | `@expo-spree` (org) |
 | `expo-spree` | expo-spree | unscoped (name free as of 2026-11-26) |
 
-Needed, in order:
+The packages build to `dist/` with tsup (ESM, CommonJS and `.d.ts`); `publishConfig` points
+`exports` at the build only when publishing, so the workspace keeps using the TypeScript source.
+Tarballs are checked in a fresh project with ESM `import`, CommonJS `require` and `tsc` under
+`nodenext`, `bundler` and `node10` resolution.
 
-1. **npm orgs** `@spree-native` and `@expo-spree`, and an automation token with publish rights,
-   saved as the `NPM_TOKEN` secret in both GitHub repos.
-2. **Build step.** The packages export TypeScript source today (fine inside the monorepos).
-   For npm they need `dist/` builds (ESM + CJS + `.d.ts`, e.g. tsup) and `publishConfig`
-   pointing at them, with `"access": "public"` and provenance.
-3. **Versions and changelogs** with Changesets (already a dev dependency): a release workflow
-   that opens a "Version packages" PR and publishes on merge. GitHub immutable releases are
+To publish:
+
+1. **npm orgs** `spree-native` and `expo-spree` on the publishing npm account (free orgs for
+   public packages).
+2. **`NPM_TOKEN` secret** in both GitHub repos: an npm *granular access token* with read and
+   write on both scopes (and "bypass 2FA" so CI can publish).
+3. **Run "Release to npm"** (`.github/workflows/release.yml`) from the Actions tab: first with
+   *dry run* on, then off. It builds, lints, typechecks, tests and publishes every package
+   under `packages/` whose version isn't on npm yet, with provenance. spree-admin-native goes
+   first, since expo-spree's packages depend on `@spree-native/*`.
+4. **Next versions** with Changesets (already a dev dependency): `pnpm changeset`, then
+   `pnpm changeset version`, commit, and run the workflow again. GitHub immutable releases are
    fine with this; tags are never moved.
-4. **expo-spree** switches its `vendor/spree-admin-native` submodule for the published
-   `@spree-native/*` versions (ADR 0002 in that repo).
-5. **A `main` branch** in each repo for releases to come from (today the work is on
-   `claude/admin-native-apps-planning-s43gki`).
+5. **Trusted publishing.** Once each package exists on npm, add this repo's `release.yml` as a
+   trusted publisher in the package settings and remove `NPM_TOKEN`; CI then publishes with
+   short-lived OIDC credentials instead of a stored token.
 
 ## Ship the app (any distribution)
 
