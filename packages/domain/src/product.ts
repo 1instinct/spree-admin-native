@@ -33,7 +33,8 @@ export const Product = z.object({
   variants: z.array(Variant),
   optionTypes: z.array(OptionType).default([]),
   images: z.array(Image).default([]),
-  updatedAt: IsoDateTime,
+  /** null where the API doesn't send it (Store API v3). */
+  updatedAt: IsoDateTime.nullable(),
 });
 export type Product = z.infer<typeof Product>;
 
