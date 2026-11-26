@@ -1,0 +1,22 @@
+import type { Order, OrderListFilter, Page } from '@spree-native/domain';
+import type { ApiFamily } from './capabilities/types';
+
+export interface ListOrdersParams {
+  filter: OrderListFilter;
+  /** Free-text search: order number, email or name. */
+  query?: string;
+  cursor?: string | null;
+  perPage?: number;
+}
+
+export interface OrdersPort {
+  list(params: ListOrdersParams): Promise<Page<Order>>;
+  /** By id or order number (`R123456789`). */
+  get(idOrNumber: string): Promise<Order>;
+}
+
+/** One Spree API family behind domain-typed ports. Screens and the router only see this. */
+export interface SpreeAdapter {
+  readonly family: ApiFamily;
+  readonly orders: OrdersPort;
+}

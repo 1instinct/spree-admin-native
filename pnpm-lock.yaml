@@ -27,6 +27,28 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@8.4.0(yaml@2.9.1))
 
+  packages/api:
+    dependencies:
+      '@spree-native/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@spree-native/spree-sdk':
+        specifier: workspace:*
+        version: link:../spree-sdk
+      '@trpc/client':
+        specifier: ^11.31.3
+        version: 11.31.3(@trpc/server@11.31.3(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server':
+        specifier: ^11.31.3
+        version: 11.31.3(typescript@5.9.3)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@spree-native/config':
+        specifier: workspace:*
+        version: link:../config
+
   packages/config: {}
 
   packages/domain:
@@ -330,6 +352,33 @@ packages:
 
   '@rolldown/pluginutils@1.1.1':
     resolution: {integrity: sha512-glFIJDvLNDtJhT9qrMFWLPbvS+skxgt4L0K8Ei2YtnhPysAJnsI7nyxSJxKj4ADeKX0OLjC4ntRkwpLOoS3rwA==}
+
+  '@trpc/client@11.31.3':
+    resolution: {integrity: sha512-b4J6ELICI+VOI1Om7VSzrysUONR+g0OWTpj4aHj07+tIBqPyWHFH5jYtexvi3CLpCNOeBS5yQ9T/f1SkZocVdQ==}
+    peerDependencies:
+      '@trpc/server': 11.31.3
+      typescript: '>=5.7.2'
+
+  '@trpc/server@11.31.3':
+    resolution: {integrity: sha512-TEfyePHC1/x1bFn47+XNUt3LCvRN+ZKuoabwQ2rG5XzLZPnYUElY4jeovaqC6UCavETu5ca1l/n9h5DKxk5xHg==}
+    peerDependencies:
+      '@types/aws-lambda': '*'
+      '@types/express': '*'
+      '@types/ws': '*'
+      fastify: '*'
+      next: '*'
+      typescript: '>=5.7.2'
+    peerDependenciesMeta:
+      '@types/aws-lambda':
+        optional: true
+      '@types/express':
+        optional: true
+      '@types/ws':
+        optional: true
+      fastify:
+        optional: true
+      next:
+        optional: true
 
   '@turbo/darwin-64@2.11.13':
     resolution: {integrity: sha512-5IT29i4j55E5O66+la7L8Y46ut7dFaNZqrgUIYYNtcpMt9Ql7aYnSQb/6tZ+prE2AfX1RBCAtRJE41txS2rG3w==}
@@ -966,6 +1015,15 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.1.1': {}
+
+  '@trpc/client@11.31.3(@trpc/server@11.31.3(typescript@5.9.3))(typescript@5.9.3)':
+    dependencies:
+      '@trpc/server': 11.31.3(typescript@5.9.3)
+      typescript: 5.9.3
+
+  '@trpc/server@11.31.3(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
 
   '@turbo/darwin-64@2.11.13':
     optional: true
