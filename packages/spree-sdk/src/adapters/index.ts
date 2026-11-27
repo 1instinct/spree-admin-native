@@ -33,6 +33,7 @@ export { mapOrderDocument as mapPlatformV2Orders } from './platform-v2/mapOrder'
 export {
   unsupportedCustomers,
   unsupportedMedia,
+  unsupportedOrderCreation,
   unsupportedProducts,
   unsupportedPromotions,
 } from './unsupported';

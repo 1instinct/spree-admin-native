@@ -44,6 +44,12 @@ function adapter(
       cancel: vi.fn(async () => order),
       refund: vi.fn(async () => order),
       refundReasons: vi.fn(async () => [{ id: '1', name: 'Return processing' }]),
+      createDraft: vi.fn(async () => order),
+      updateDraft: vi.fn(async () => order),
+      selectShippingRate: vi.fn(async () => order),
+      paymentMethods: vi.fn(async () => [{ id: '3', name: 'Check', description: null }]),
+      place: vi.fn(async () => order),
+      discardDraft: vi.fn(async () => undefined),
       ...overrides,
     },
     products: unsupportedProducts,
@@ -643,5 +649,115 @@ describe('media', () => {
     await expect(
       createCaller(ctx(['products.media'], a)).media.move({ product: ref, imageId: 'media_1', toIndex: 0 }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST', message: 'Change which variant first.' });
+  });
+});
+
+describe('order creation', () => {
+  const ref = { id: order.id, number: order.number };
+  const address = {
+    firstName: ' Ada ',
+    lastName: 'Lovelace',
+    company: '',
+    address1: '1 Main St',
+    address2: null,
+    city: 'Portland',
+    zipcode: '97201',
+    phone: '555-0100',
+    stateCode: 'or',
+    stateName: null,
+    countryIso: 'us',
+  };
+  const draft = {
+    customerId: null,
+    email: ' ada@example.com ',
+    items: [{ variantId: '117', quantity: 2 }],
+    shipAddress: address,
+    billAddress: null,
+  };
+  const can = (a = adapter()) => createCaller(ctx(['orders.read', 'orders.create'], a));
+
+  it('needs orders.create, and says which Spree versions have it', async () => {
+    const a = adapter();
+    const err = await createCaller(ctx(['orders.read'], a))
+      .orders.createDraft(draft)
+      .catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect((err as Error).message).toMatch(/Creating orders/);
+    expect(a.orders.createDraft).not.toHaveBeenCalled();
+  });
+
+  it('creates a draft with a tidy address: trimmed, empty as null, codes in capitals', async () => {
+    const a = adapter();
+    await can(a).orders.createDraft(draft);
+    expect(a.orders.createDraft).toHaveBeenCalledWith({
+      customerId: null,
+      email: 'ada@example.com',
+      items: [{ variantId: '117', quantity: 2 }],
+      shipAddress: { ...address, firstName: 'Ada', company: null, stateCode: 'OR', countryIso: 'US' },
+      billAddress: null,
+    });
+  });
+
+  it('refuses drafts Spree would refuse, before calling the store', async () => {
+    const a = adapter();
+    const bad = [
+      { ...draft, email: 'not-an-email' },
+      { ...draft, items: [] },
+      { ...draft, items: [{ variantId: '117', quantity: 0 }] },
+      { ...draft, items: [{ variantId: '117', quantity: 1.5 }] },
+      {
+        ...draft,
+        items: [
+          { variantId: '117', quantity: 1 },
+          { variantId: '117', quantity: 2 },
+        ],
+      },
+      { ...draft, shipAddress: { ...address, city: ' ' } },
+      { ...draft, shipAddress: { ...address, countryIso: 'USA' } },
+    ];
+    for (const input of bad)
+      await expect(can(a).orders.createDraft(input)).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(a.orders.createDraft).not.toHaveBeenCalled();
+  });
+
+  it('updates a draft by reference with its whole contents', async () => {
+    const a = adapter();
+    await can(a).orders.updateDraft({ ...draft, customerId: 'c1', order: ref });
+    expect(a.orders.updateDraft).toHaveBeenCalledWith(
+      ref,
+      expect.objectContaining({ customerId: 'c1', email: 'ada@example.com' }),
+    );
+  });
+
+  it('chooses a rate, lists payment methods, places and discards', async () => {
+    const a = adapter();
+    const caller = can(a);
+    await caller.orders.selectShippingRate({
+      order: ref,
+      fulfillment: { id: '5', number: 'H1' },
+      rateId: '267',
+    });
+    expect(a.orders.selectShippingRate).toHaveBeenCalledWith(ref, { id: '5', number: 'H1' }, '267');
+    expect(await caller.orders.paymentMethods({ order: ref })).toEqual([
+      { id: '3', name: 'Check', description: null },
+    ]);
+    await caller.orders.place({ order: ref, payment: { methodId: '3', markPaid: true } });
+    expect(a.orders.place).toHaveBeenCalledWith(ref, { payment: { methodId: '3', markPaid: true } });
+    await caller.orders.place({ order: ref, payment: null });
+    expect(a.orders.place).toHaveBeenLastCalledWith(ref, { payment: null });
+    expect(await caller.orders.discardDraft({ order: ref })).toEqual({ discarded: order.number });
+    expect(a.orders.discardDraft).toHaveBeenCalledWith(ref);
+  });
+
+  it("passes the store's refusal through with its kind", async () => {
+    const a = adapter({
+      place: async () => {
+        throw new SpreeError({ kind: 'invalid', status: 422, message: 'Denim Shirt is out of stock.' });
+      },
+    });
+    await expect(can(a).orders.place({ order: ref, payment: null })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Denim Shirt is out of stock.',
+    });
   });
 });

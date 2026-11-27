@@ -9,8 +9,10 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
   // Routes confirmed on 4.2.7 (FINDINGS.md §b). No refunds: v1 only has payments/:id/credit.
   // Products (status derived from available_on/discontinue_on), stock and users proven in §g.
   // Product photos and the store-wide list (companion gem, else a product scan) proven in §h.
+  // Order creation (importer + checkouts, no gem needed) proven in §i.
   'api-v1': [
     'orders.read',
+    'orders.create',
     'orders.cancel',
     'orders.capture',
     'shipments.ship',
@@ -34,6 +36,7 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
   'admin-v3': [
     'inventory.lowStock',
     'orders.read',
+    'orders.create',
     'orders.cancel',
     'orders.capture',
     'orders.refund',

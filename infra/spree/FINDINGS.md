@@ -664,3 +664,129 @@ every boot. A recreated container has a fresh filesystem, so the gem's migration
 under a new timestamp and ran again against tables that already exist: spree42 exited with
 `PG::DuplicateTable` on `spree_admin_native_devices`. The gem's migration now uses
 `if_not_exists` for its tables and indexes, so a re-copied migration is a no-op.
+## i. Creating orders (2026-11-27)
+
+Established live against both stores and proven by
+`packages/spree-sdk/contract/order-create.contract.ts` (a customer's order with two items, an
+address, a chosen rate and a manual payment marked paid; a guest order left with a balance due; a
+draft edited and discarded). On 4.2 the suite runs **without** the companion gem, so
+`orders.create` is claimed for the `api-v1` family; the gem's extras are checked separately.
+
+### 4.2: API v1
+
+```sh
+# Draft: Spree's order importer (admins only). No user_id: see 1.
+curl -s -X POST -H "X-Spree-Token: $KEY42" -H 'Content-Type: application/json' "$B42/api/v1/orders" -d '{"order":{
+  "email":"customer1@example.com","line_items_attributes":[{"variant_id":117,"quantity":2}],
+  "ship_address_attributes":{"firstname":"Ada","lastname":"Lovelace","address1":"1 Main St","city":"Portland",
+    "zipcode":"97201","phone":"5550100","country_id":224,"state_name":"OR"},"bill_address_attributes":{…}}}'
+curl -s -X PUT  … "$B42/api/v1/orders/R123" -d '{"order":{"user_id":3}}'          # or null for a guest
+curl -s -X PUT  … "$B42/api/v1/checkouts/R123/next"                                 # cart → address → delivery
+curl -s -X PUT  … "$B42/api/v1/checkouts/R123" -d '{"state":"delivery","order":{"shipments_attributes":[{"id":33,"selected_shipping_rate_id":342}]}}'
+curl -s -X POST … "$B42/api/v1/orders/R123/payments" -d '{"payment":{"payment_method_id":3,"amount":"289.97"}}'
+curl -s -X PUT  … "$B42/api/v1/checkouts/R123/next"                                 # payment → complete
+curl -s -X PUT  … "$B42/api/v1/orders/R123/payments/P3MAN240/capture"               # only when paid now
+```
+
+1. **`POST /api/v1/orders` as an admin runs `Spree::Core::Importer::Order`**, not the cart
+   service. It takes `email`, `line_items_attributes` and both `*_address_attributes` (with
+   `country: {iso}` / `state: {abbr}`, or `country_id` and `state_name`), and gives the order to
+   the API user (**the admin**) when no `user_id` is sent. With `user_id` it gives it to that
+   customer, who also becomes `created_by`. The SDK sends no `user_id` and then
+   `PUT /orders/:number` with `order[user_id]` (the customer, or `null` for a guest), so the admin
+   stays the order's creator. The importer leaves the order in `cart` with proposed shipments.
+   - The admin branch reads the `*_attributes` names; `line_items` / `ship_address` only work
+     because `order_params` happens to rename them first.
+   - A failed import answers **422 `{"exception": "Validation failed: Shipping address last name
+     can't be blank, …"}`**. `extractErrorMessage` now reads `exception`.
+2. Address writes after the importer take `country_id`: 4.2's `Address` has no `country_iso`
+   setter (only the storefront services translate it). `state_name` accepts a state's name or
+   abbreviation; validation resolves it to the state. `GET /api/v1/countries` ignores Ransack
+   (`q[iso_eq]` returns all 240) and answers them in one page; the SDK caches the iso → id map.
+3. `PUT /api/v1/checkouts/:number/next` walks cart → address → delivery (`advance` runs on to
+   `payment`). From delivery on, shipments carry `shipping_rates` (`id`, `name`, `cost`,
+   `selected`). Editing lines or the order (`Cart::Update`) restarts the checkout to `address`
+   and drops the shipments, so rates are quoted again after `next`.
+4. **Choosing a rate**: `PUT /api/v1/shipments/:number` with `shipment[selected_shipping_rate_id]`
+   changes the cost but leaves the seeded free-shipping promotion's credit at the old rate
+   (item 274.97 + ship 15.00 − 5.00 = total 284.97). `PUT /api/v1/checkouts/:number` with
+   `state: delivery` and `order[shipments_attributes][][id, selected_shipping_rate_id]` re-enters
+   the delivery step and leaves it, which re-applies shipping promotions and totals
+   (ship 15.00, credit −15.00). The SDK uses that.
+5. **Payment methods**: v1 `GET /orders/:number/payments/new` lists `id`, `name` and
+   `description` only, so card methods (Bogus gateway, Store Credit) can't be told from Check.
+   The Storefront API v2 `GET /api/v2/storefront/checkout/payment_methods` with
+   `X-Spree-Order-Token: <order.token>` (admins see the token in v1's order JSON) names each
+   type, but only for storefront methods (`display_on` both/front_end). Without the gem the SDK
+   offers that list's `Spree::PaymentMethod::Check` methods; gem 0.3 `GET payment_methods`
+   lists active, back-office, source-less methods for the default store.
+6. **Placing**: `POST /orders/:number/payments` with `payment_method_id` and `amount`, then
+   `next` (payment → complete; a `confirm` step is walked too when a store has one). Source-less
+   payments are **not processed** at completion (`handle_payment_preconditions` only yields for
+   methods that need a source), so a Check payment stays **`checkout`** on the placed order and
+   `payment_state` is `balance_due`. `PUT …/payments/:number/capture` takes it to `completed`
+   (`paid`). Spree's admin offers Capture on such payments; the app's order screen now shows
+   Capture for `checkout` payments of placed orders too, and the orders contract's capture test
+   takes them (the seed's "balance due" orders hold exactly such payments).
+7. Without a payment, `next` from `payment` is refused ("No payment found"), so on 4.2 "balance
+   due" always records a pending manual payment.
+8. **No delete**: `DELETE /api/v1/orders/:number` is routed but has no action (404 HTML).
+   `PUT /orders/:number/empty` (204) empties the order; the SDK also detaches it from any
+   account. Gem 0.3 `DELETE orders/:number` deletes incomplete orders a staff member created
+   (`created_by` is an admin) and refuses placed orders and shoppers' carts.
+9. Spree 4 answers unknown `/api/*` paths with 301 to `/api/v1/…json`. A **DELETE** to a gem
+   endpoint the store's (older) gem doesn't have follows that into "redirect count exceeded"
+   (a network error, not a 404); the SDK falls back to v1 on either.
+
+### 6.0: Admin API v3
+
+```sh
+curl -s -X POST -H "X-Spree-Api-Key: $KEY60" -H 'Content-Type: application/json' \
+  "$B60/api/v3/admin/orders?expand=items,fulfillments.delivery_rates" -d '{"customer_id":"cust_98FqgRua4h",
+  "items":[{"variant_id":"variant_nJqfPa3Cpe","quantity":2}],"shipping_address":{"first_name":"Pat","last_name":"Guest",
+  "address1":"1 Main St","city":"Portland","postal_code":"97201","country_code":"US","state_code":"OR","phone":"5550100"},
+  "use_shipping":true}'
+curl -s -X PATCH … "$B60/api/v3/admin/orders/or_…/fulfillments/ful_…" -d '{"selected_delivery_rate_id":"dr_…"}'
+curl -s -X POST  … "$B60/api/v3/admin/orders/or_…/payments" -d '{"payment_method_id":"pm_EfhxLZ9ck8"}'
+curl -s -X PATCH … "$B60/api/v3/admin/orders/or_…/complete" -d '{"payment_pending":true}'
+curl -s -X PATCH … "$B60/api/v3/admin/orders/or_…/payments/py_…/capture"         # only when paid now
+```
+
+1. `POST /orders` (request schema `order`) takes `email`, `customer_id`, `items`
+   (`variant_id`, `quantity`, optional negotiated `price`), `shipping_address` /
+   `billing_address` (`first_name`, `last_name`, `address1`, `address2`, `city`,
+   `postal_code`, `phone`, `company`, `country_code`, `state_code` or `state_name`),
+   `use_shipping` (bill = ship) and `use_customer_default_address`. It answers a `status: draft`
+   order with fulfillments already priced; their rates need
+   `expand=fulfillments.delivery_rates` (seed: Store Pickup 0.00, Standard 5.00 selected,
+   Express 15.00). The SDK adds that expand to `orders.get`.
+2. `PATCH /orders/:id`: `items` upserts by variant and `quantity: 0` removes a line;
+   `customer_id: null` makes it a guest order; addresses are replaced (`use_shipping` copies).
+3. `PATCH /orders/:id/fulfillments/:id` with `selected_delivery_rate_id` reprices the order.
+4. `GET /payment_methods`: Check has `source_required: false`, `session_required: false`
+   (and `storefront_visible: false`); Store Credit and the Bogus card gateway require a source.
+5. `POST /orders/:id/payments` with `payment_method_id` records a `checkout` payment for what
+   the order owes. `PATCH /orders/:id/complete`:
+   - with no payment: 422 `order_cannot_complete` "No payment found";
+   - with a Check payment: processes it and, with the default `resolved_capture_method:
+     checkout`, **captures** it (`paid`);
+   - with `payment_pending: true`: places the order without processing: the payment stays
+     `checkout` (`can_capture: true`) and `payment_status` is `none` (the SDK reports `unpaid`).
+     `PATCH …/payments/:id/capture` then makes it `paid`. With no payment at all it places the
+     order with the whole total due.
+
+   The SDK always completes with `payment_pending: true` and captures explicitly for "paid now",
+   so the outcome doesn't depend on a method's capture setting.
+6. `DELETE /orders/:id` deletes a draft (204, then 404). A placed order answers 422
+   "Order cannot be deleted".
+7. The order list's `complete: true` filter hides drafts; `q[status_eq]=draft` lists admin
+   drafts (storefront checkouts carry a `cart_id` and stay out of the admin scope).
+
+### Shared Docker stores
+
+`docker compose up` (which `spree-up.mjs` and `contract.mjs` run) recreates a container whose
+configuration changed, and a worktree's compose file bind-mounts *its own* `gems/` and
+`infra/spree/*`. Running either script from another checkout therefore recreates both stores
+with that checkout's gem. On a fresh 4.2 container the entrypoint copies the gem's migration
+again under a new timestamp, and `create_table` failed on the existing tables, so the store
+exited at boot. The migration now uses `if_not_exists`, which makes the re-copy harmless.

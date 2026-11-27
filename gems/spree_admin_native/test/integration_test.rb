@@ -49,6 +49,7 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
     assert_includes json['api_families'], 'api-v1'
     assert_includes json['capabilities'], 'notifications.push'
     %w[orders.refund promotions.read promotions.write inventory.lowStock media.library].each { |c| assert_includes json['capabilities'], c }
+    %w[orders.refund orders.create promotions.read promotions.write inventory.lowStock].each { |c| assert_includes json['capabilities'], c }
     assert_includes json['auth_methods'], 'pairing'
     assert_equal SpreeAdminNative::VERSION, json['gem_version']
   end
@@ -471,5 +472,67 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
     second = media(q: 'okapi', per_page: 2, page: 2)
     assert_equal 1, second['data'].size
     assert_equal [product.id.to_s], (first['data'] + second['data']).map { |r| r['product_id'] }.uniq
+  end
+
+  # --- 0.3: order creation on API v1 ------------------------------------------------------
+
+  def staff_draft(created_by: @admin)
+    order = Spree::Order.create!(email: 'draft@example.com', store: Spree::Store.default, created_by: created_by)
+    variant = Spree::Variant.where(is_master: false).first
+    Spree::Cart::AddItem.call(order: order, variant: variant, quantity: 1)
+    order
+  end
+
+  def test_payment_methods_are_the_ones_without_a_card
+    get '/api/admin_native/v1/payment_methods'
+    assert_equal 401, last_response.status
+
+    store = { stores: [Spree::Store.default] }
+    cash = Spree::PaymentMethod::Check.create!(name: 'Cash (back office)', display_on: 'back_end', active: true, **store)
+    online = Spree::PaymentMethod::Check.create!(name: 'Pay later (storefront)', display_on: 'front_end', active: true, **store)
+    off = Spree::PaymentMethod::Check.create!(name: 'Old check', display_on: 'both', active: false, **store)
+    elsewhere = Spree::PaymentMethod::Check.create!(name: 'Other shop cash', display_on: 'both', active: true)
+    header 'X-Spree-Token', pair!
+    get '/api/admin_native/v1/payment_methods'
+    assert_equal 200, last_response.status, last_response.body
+    names = json['data'].map { |m| m['name'] }
+    assert_includes names, 'Check'
+    assert_includes names, cash.name
+    [online.name, off.name, elsewhere.name, 'Credit Card', 'Store Credit'].each { |n| refute_includes names, n }
+    assert_equal cash.id.to_s, json['data'].find { |m| m['name'] == cash.name }['id']
+  end
+
+  def test_a_staff_draft_can_be_deleted
+    order = staff_draft
+    header 'X-Spree-Token', pair!
+    delete "/api/admin_native/v1/orders/#{order.number}"
+    assert_equal 204, last_response.status, last_response.body
+    refute Spree::Order.exists?(order.id)
+    assert_equal 0, Spree::LineItem.where(order_id: order.id).count
+  end
+
+  def test_placed_orders_and_shopper_carts_are_not_deleted
+    header 'X-Spree-Token', pair!
+    placed = Spree::Order.complete.first
+    delete "/api/admin_native/v1/orders/#{placed.number}"
+    assert_equal 422, last_response.status
+    assert_equal 'order_placed', json.dig('error', 'code')
+
+    shopper = Spree.user_class.where.not(id: @admin.id).detect { |u| !u.has_spree_role?(:admin) }
+    cart = staff_draft(created_by: shopper)
+    delete "/api/admin_native/v1/orders/#{cart.number}"
+    assert_equal 422, last_response.status
+    assert_equal 'not_a_draft', json.dig('error', 'code')
+    assert Spree::Order.exists?(cart.id)
+
+    delete '/api/admin_native/v1/orders/R000NOPE'
+    assert_equal 404, last_response.status
+  end
+
+  def test_deleting_drafts_needs_an_admin
+    order = staff_draft
+    delete "/api/admin_native/v1/orders/#{order.number}"
+    assert_equal 401, last_response.status
+    assert Spree::Order.exists?(order.id)
   end
 end

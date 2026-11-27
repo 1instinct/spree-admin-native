@@ -12,6 +12,8 @@ SpreeAdminNative::Engine.routes.draw do
     get 'refund_reasons', to: 'refunds#reasons'
     post 'orders/:order_number/payments/:payment_number/refunds', to: 'refunds#create'
     resources :promotions, only: %i[index show create update]
+    get 'payment_methods', to: 'draft_orders#payment_methods'
+    delete 'orders/:order_number', to: 'draft_orders#destroy'
   end
 end
 
