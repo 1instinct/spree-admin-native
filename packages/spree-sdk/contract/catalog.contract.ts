@@ -26,8 +26,11 @@ describe.runIf(enabled)(`catalog contract: Spree ${env.label}`, () => {
   beforeAll(async () => {
     const transport = baseTransport();
     const auth = await signIn(transport);
-    const family = env.family ?? (await probeStore({ baseUrl: env.url, timeoutMs: 10_000 })).preferredApi;
-    adapter = createAdapter(family, transport.withAuth(auth));
+    const probe = await probeStore({ baseUrl: env.url, timeoutMs: 10_000 });
+    // Like the app: the companion gem's endpoints come along when the store has it.
+    adapter = createAdapter(env.family ?? probe.preferredApi, transport.withAuth(auth), {
+      companion: probe.gem !== null,
+    });
     // Newest first: seeded orders tend to use the oldest products, which orders tests restock.
     const page = await adapter.products.list({ status: 'active', perPage: 50 });
     sample = must(
@@ -203,15 +206,13 @@ describe.runIf(enabled)(`catalog contract: Spree ${env.label}`, () => {
     let others: number | null = null;
     try {
       const t1 = must(await onHand(await adapter.products.setStock(sample, variant.id, 7)), 'on-hand count');
-      // Other locations keep their stock: the total moves by exactly what this location moved.
+      // Other locations keep their stock (possibly negative when backordered), so the total moves
+      // by exactly what this location moved. Totals can also drift on their own (Spree 6 nets out
+      // expiring cart reservations), so only changes made here are asserted.
       others = t1 - 7;
-      expect(others).toBeGreaterThanOrEqual(0);
       expect(await onHand(await adapter.products.setStock(sample, variant.id, 9))).toBe(t1 + 2);
     } finally {
-      if (others !== null) {
-        const restored = await adapter.products.setStock(sample, variant.id, total0 - others);
-        expect(await onHand(restored)).toBe(total0);
-      }
+      if (others !== null) await adapter.products.setStock(sample, variant.id, total0 - others);
     }
   });
 
@@ -242,10 +243,8 @@ describe.runIf(enabled)(`catalog contract: Spree ${env.label}`, () => {
         }
         expect(ids).toContain(sample.id);
       } finally {
-        if (others !== null) {
-          const restored = await adapter.products.setStock(sample, variant.id, total0 - others);
-          expect(await onHand(restored)).toBe(total0);
-        }
+        // Totals can drift on their own (expiring reservations), so the restore isn't asserted.
+        if (others !== null) await adapter.products.setStock(sample, variant.id, total0 - others);
       }
     },
   );
