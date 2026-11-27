@@ -49,7 +49,7 @@ function baseAdapter(family: ApiFamily, transport: Transport, gem?: CompanionPor
         ...pending,
         orders: apiV1Orders(transport, gem),
         promotions: gem ? companionPromotions(transport) : unsupportedPromotions,
-        products: apiV1Products(transport),
+        products: apiV1Products(transport, gem),
         customers: apiV1Customers(transport),
       };
     case 'platform-v2':

@@ -1,8 +1,8 @@
 import type { OrderListFilter } from '@instincts/spree-domain';
 import { space } from '@instincts/spree-ui';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 import { FilterChips } from '@/components/filter-chips';
 import { OrderRow } from '@/components/order-row';
@@ -25,7 +25,13 @@ const EMPTY: Record<OrderListFilter, [string, string]> = {
 
 export default function OrdersScreen() {
   const trpc = useTRPC();
-  const [filter, setFilter] = useState<OrderListFilter>('unfulfilled');
+  // Home's to-do rows open this tab on a filter (?filter=unpaid).
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const linked = FILTERS.find(([key]) => key === params.filter)?.[0];
+  const [filter, setFilter] = useState<OrderListFilter>(linked ?? 'unfulfilled');
+  useEffect(() => {
+    if (linked) setFilter(linked);
+  }, [linked]);
   const query = useInfiniteQuery(
     trpc.orders.list.infiniteQueryOptions(
       { filter, perPage: 25 },

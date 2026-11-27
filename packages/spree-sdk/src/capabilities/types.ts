@@ -30,6 +30,7 @@ export const CORE_CAPABILITIES = [
   'products.write',
   'products.media',
   'inventory.adjust',
+  'inventory.lowStock',
   'customers.read',
   'customers.write',
   'promotions.read',

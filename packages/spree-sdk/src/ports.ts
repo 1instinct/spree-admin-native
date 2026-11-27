@@ -63,6 +63,11 @@ export interface ListProductsParams {
   /** Name or SKU. */
   query?: string;
   status?: ProductStatusFilter;
+  /**
+   * Only products with sellable, tracked variants at or under the low-stock threshold, lowest
+   * stock first (`inventory.lowStock`). Ignores `status` and `query`.
+   */
+  lowStock?: boolean;
   cursor?: string | null;
   perPage?: number;
 }

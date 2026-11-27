@@ -432,6 +432,20 @@ describe('products and customers', () => {
     expect((await caller.products.get({ id: 'prod_1' })).name).toBe('Denim Shirt');
   });
 
+  it('lists low-stock products only on stores that can', async () => {
+    const { a, products } = catalog();
+    await expect(
+      createCaller(ctx(['products.read'], a)).products.list({ lowStock: true }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+    await createCaller(ctx(['products.read', 'inventory.lowStock'], a)).products.list({ lowStock: true });
+    expect(products.list).toHaveBeenLastCalledWith({
+      status: 'all',
+      perPage: 25,
+      cursor: null,
+      lowStock: true,
+    });
+  });
+
   it('gates reads, writes and stock on their own capabilities', async () => {
     const { a, products } = catalog();
     await expect(createCaller(ctx(['orders.read'], a)).products.list({})).rejects.toMatchObject({

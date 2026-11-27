@@ -21,6 +21,15 @@ export interface CompanionRefund {
 export interface CompanionPort {
   summary(): Promise<StoreSummary>;
   refundReasons(): Promise<{ id: string; name: string }[]>;
+  /** Gem 0.3+: products with low-stock variants, lowest first. */
+  lowStockProducts(
+    page: number,
+    perPage: number,
+  ): Promise<{
+    rows: { productId: string; lowVariants: number; lowestOnHand: number }[];
+    totalCount: number;
+    threshold: number;
+  }>;
   /** Spree 4.2–4.3: API v1 has no working refund action. */
   refund(input: {
     orderNumber: string;
@@ -88,6 +97,21 @@ export function companion(transport: Transport): CompanionPort {
         lowStockVariants: b.low_stock_variants,
         generatedAt: b.generated_at,
       });
+    },
+    async lowStockProducts(page, perPage) {
+      const { data } = await transport.request<{
+        data: { product_id: string; low_variants: number; lowest_on_hand: number }[];
+        meta: { total_count: number; threshold: number };
+      }>({ path: `${BASE}/low_stock`, query: { page, per_page: perPage } });
+      return {
+        rows: data.data.map((r) => ({
+          productId: r.product_id,
+          lowVariants: r.low_variants,
+          lowestOnHand: r.lowest_on_hand,
+        })),
+        totalCount: data.meta.total_count,
+        threshold: data.meta.threshold,
+      };
     },
     async refundReasons() {
       const { data } = await transport.request<{ data: { id: string; name: string }[] }>({

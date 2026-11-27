@@ -29,6 +29,7 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
     'webhooks.manage',
   ],
   'admin-v3': [
+    'inventory.lowStock',
     'orders.read',
     'orders.cancel',
     'orders.capture',

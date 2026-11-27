@@ -3,6 +3,8 @@ const MESSAGES: Record<string, string> = {
   'products.read': "This store's API doesn't allow reading products with your account.",
   'products.write': "This store's API doesn't allow editing products with your account.",
   'inventory.adjust': "This store's API doesn't allow changing stock with your account.",
+  'inventory.lowStock':
+    "This store can't list low-stock products (Spree 4.2–5.3 needs the companion gem 0.3).",
   'customers.read': "This store's API doesn't allow reading customers with your account.",
   'orders.capture': 'Capturing payments from the app needs Spree 5.4+ or the companion gem.',
   'orders.refund': 'Refunds from the app need Spree 5.4+ or the companion gem.',

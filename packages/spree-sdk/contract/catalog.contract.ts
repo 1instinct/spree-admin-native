@@ -215,6 +215,41 @@ describe.runIf(enabled)(`catalog contract: Spree ${env.label}`, () => {
     }
   });
 
+  proves(
+    'inventory.lowStock',
+    'lists a product once a tracked variant runs out, then restores it',
+    async (skip) => {
+      const caps = (await probeStore({ baseUrl: env.url, timeoutMs: 10_000 })).capabilities;
+      if (!caps.includes('inventory.lowStock')) return skip('store has no low-stock list');
+      const before = (await adapter.products.get(sample.id)).variants.find((v) => v.id === variant.id);
+      const total0 = must(before?.totalOnHand, 'on-hand count');
+      const onHand = async (p: Product) => p.variants.find((v) => v.id === variant.id)?.totalOnHand;
+      let others: number | null = null;
+      try {
+        const t1 = must(
+          await onHand(await adapter.products.setStock(sample, variant.id, 0)),
+          'on-hand count',
+        );
+        others = t1;
+        if (others > 2) return skip('the variant has stock at other locations');
+        const ids: string[] = [];
+        let cursor: string | null = null;
+        for (let page = 0; page < 10; page++) {
+          const res = await adapter.products.list({ lowStock: true, perPage: 100, cursor });
+          ids.push(...res.items.map((p) => p.id));
+          if (!res.nextCursor) break;
+          cursor = res.nextCursor;
+        }
+        expect(ids).toContain(sample.id);
+      } finally {
+        if (others !== null) {
+          const restored = await adapter.products.setStock(sample, variant.id, total0 - others);
+          expect(await onHand(restored)).toBe(total0);
+        }
+      }
+    },
+  );
+
   // --- customers.read --------------------------------------------------------------------------
 
   proves('customers.read', 'lists customers as valid domain customers', async () => {
