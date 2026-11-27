@@ -1,11 +1,13 @@
 import type {
   Customer,
   Fulfillment,
+  LibraryImage,
   Order,
   OrderListFilter,
   Page,
   Payment,
   Product,
+  ProductImage,
   Promotion,
   PromotionListFilter,
 } from '@instincts/spree-domain';
@@ -97,6 +99,52 @@ export interface ProductsPort {
   setStock(product: Pick<Product, 'id'>, variantId: string, countOnHand: number): Promise<Product>;
 }
 
+// --- Media ---------------------------------------------------------------------------------
+
+/**
+ * A picked photo. In React Native, `uri` is a local file (`file://…`) that fetch uploads from;
+ * elsewhere (Node, tests) pass its bytes as `blob`. `type` must be an image type the store
+ * accepts: Spree 4.2 takes JPEG, PNG and GIF only.
+ */
+export type MediaFile = { name: string; type: string } & ({ uri: string } | { blob: Blob });
+
+export interface MediaUploadInput {
+  file: MediaFile;
+  alt?: string | null;
+  /** Show it for these variants only; empty or absent shows it for every variant. */
+  variantIds?: string[];
+}
+
+export interface MediaUpdate {
+  /** Empty or null clears it. */
+  alt?: string | null;
+  /** Empty shows it for every variant. Spree 4.x takes at most one. */
+  variantIds?: string[];
+}
+
+export interface ListLibraryParams {
+  /** Product name (or SKU where the store can search it). */
+  query?: string;
+  /** Only images without alt text. */
+  missingAlt?: boolean;
+  cursor?: string | null;
+  perPage?: number;
+}
+
+/**
+ * `products.media`: a product's gallery. Every write returns the gallery as it now is, in display
+ * order. `media.library`: every product image in the store.
+ */
+export interface MediaPort {
+  list(product: Pick<Product, 'id'>): Promise<ProductImage[]>;
+  upload(product: Pick<Product, 'id'>, input: MediaUploadInput): Promise<ProductImage[]>;
+  update(product: Pick<Product, 'id'>, imageId: string, patch: MediaUpdate): Promise<ProductImage[]>;
+  /** Moves an image to `toIndex` (0 = the main image) of the gallery as `list` orders it. */
+  move(product: Pick<Product, 'id'>, imageId: string, toIndex: number): Promise<ProductImage[]>;
+  remove(product: Pick<Product, 'id'>, imageId: string): Promise<ProductImage[]>;
+  library(params: ListLibraryParams): Promise<Page<LibraryImage>>;
+}
+
 // --- Customers -----------------------------------------------------------------------------
 
 export interface ListCustomersParams {
@@ -160,6 +208,7 @@ export interface SpreeAdapter {
   readonly products: ProductsPort;
   readonly customers: CustomersPort;
   readonly promotions: PromotionsPort;
+  readonly media: MediaPort;
   /** Present when the store runs the spree_admin_native gem. */
   readonly companion?: CompanionPort;
 }
