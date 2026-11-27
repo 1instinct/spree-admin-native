@@ -8,6 +8,7 @@ import type { ApiFamily, AuthMethod, Capability } from './types';
 export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
   // Routes confirmed on 4.2.7 (FINDINGS.md §b). No refunds: v1 only has payments/:id/credit.
   // Products (status derived from available_on/discontinue_on), stock and users proven in §g.
+  // Product photos and the store-wide list (companion gem, else a product scan) proven in §h.
   'api-v1': [
     'orders.read',
     'orders.cancel',
@@ -16,6 +17,8 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
     'inventory.adjust',
     'products.read',
     'products.write',
+    'products.media',
+    'media.library',
     'customers.read',
   ],
   // Read-only until a Platform v2 store is in the contract suite (actions throw `capability`).
@@ -38,6 +41,7 @@ export const FAMILY_CAPABILITIES: Record<ApiFamily, readonly Capability[]> = {
     'products.read',
     'products.write',
     'products.media',
+    'media.library',
     'inventory.adjust',
     'customers.read',
     'customers.write',

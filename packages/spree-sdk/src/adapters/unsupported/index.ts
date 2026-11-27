@@ -1,5 +1,5 @@
 import { unsupported } from '../../errors';
-import type { CustomersPort, ProductsPort, PromotionsPort } from '../../ports';
+import type { CustomersPort, MediaPort, ProductsPort, PromotionsPort } from '../../ports';
 
 const refuse = (capability: string) => async (): Promise<never> => {
   throw unsupported(capability);
@@ -24,4 +24,13 @@ export const unsupportedPromotions: PromotionsPort = {
   get: refuse('promotions.read'),
   create: refuse('promotions.write'),
   update: refuse('promotions.write'),
+};
+
+export const unsupportedMedia: MediaPort = {
+  list: refuse('products.media'),
+  upload: refuse('products.media'),
+  update: refuse('products.media'),
+  move: refuse('products.media'),
+  remove: refuse('products.media'),
+  library: refuse('media.library'),
 };

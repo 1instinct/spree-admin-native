@@ -22,7 +22,7 @@ describe('companion client', () => {
   it('exchanges a code for a device token', async () => {
     const calls: unknown[] = [];
     const fetch: FetchLike = async (_url, init) => {
-      calls.push(JSON.parse(init.body ?? '{}'));
+      calls.push(JSON.parse(String(init.body ?? '{}')));
       return json(201, {
         token: 'san_x',
         device: { id: '1', name: 'iPhone', platform: 'ios' },

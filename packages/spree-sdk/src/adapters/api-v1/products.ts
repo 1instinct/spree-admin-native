@@ -18,7 +18,7 @@ const BASE = '/api/v1/products';
  */
 export const V1_NO_CACHE = { 'Cache-Control': 'no-cache' } as const;
 /** Without this, update and get can't see discontinued (archived) products. */
-const SHOW_ARCHIVED = { show_discontinued: 1 } as const;
+export const SHOW_ARCHIVED = { show_discontinued: 1 } as const;
 /** Server pages a status-filtered list reads before returning what it has found. */
 export const V1_MAX_SCAN_PAGES = 5;
 
@@ -70,28 +70,33 @@ async function stockLocationId(transport: Transport): Promise<number> {
   return location.id;
 }
 
+/** The raw product, and whether only the archived lookup found it. Accepts an id or a slug. */
+export async function fetchV1Product(
+  transport: Transport,
+  id: string,
+): Promise<{ raw: V1Product; archived: boolean }> {
+  const path = `${BASE}/${enc(id)}`;
+  try {
+    return {
+      raw: (await transport.request<V1Product>({ path, headers: V1_NO_CACHE })).data,
+      archived: false,
+    };
+  } catch (e) {
+    if (!isSpreeError(e) || e.kind !== 'notFound') throw e;
+  }
+  const res = await transport.request<V1Product>({
+    path,
+    query: { ...SHOW_ARCHIVED, show_deleted: 1 },
+    headers: V1_NO_CACHE,
+  });
+  return { raw: res.data, archived: true };
+}
+
 /** API v1 (Spree 4.2–4.3). Status is derived from available_on / discontinue_on (FINDINGS.md §g). */
 export function apiV1Products(transport: Transport): ProductsPort {
   const currency = storeCurrency(transport);
 
-  /** The raw product, and whether only the archived lookup found it. Accepts an id or a slug. */
-  async function fetchRaw(id: string): Promise<{ raw: V1Product; archived: boolean }> {
-    const path = `${BASE}/${enc(id)}`;
-    try {
-      return {
-        raw: (await transport.request<V1Product>({ path, headers: V1_NO_CACHE })).data,
-        archived: false,
-      };
-    } catch (e) {
-      if (!isSpreeError(e) || e.kind !== 'notFound') throw e;
-    }
-    const res = await transport.request<V1Product>({
-      path,
-      query: { ...SHOW_ARCHIVED, show_deleted: 1 },
-      headers: V1_NO_CACHE,
-    });
-    return { raw: res.data, archived: true };
-  }
+  const fetchRaw = (id: string) => fetchV1Product(transport, id);
 
   /** Which of these (all listed with show_discontinued) the default scope hides: the archived ones. */
   async function archivedIds(products: V1Product[]): Promise<Set<number>> {

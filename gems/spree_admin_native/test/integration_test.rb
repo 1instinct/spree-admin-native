@@ -48,7 +48,7 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
     assert_equal 200, last_response.status
     assert_includes json['api_families'], 'api-v1'
     assert_includes json['capabilities'], 'notifications.push'
-    %w[orders.refund promotions.read promotions.write inventory.lowStock].each { |c| assert_includes json['capabilities'], c }
+    %w[orders.refund promotions.read promotions.write inventory.lowStock media.library].each { |c| assert_includes json['capabilities'], c }
     assert_includes json['auth_methods'], 'pairing'
     assert_equal SpreeAdminNative::VERSION, json['gem_version']
   end
@@ -395,5 +395,81 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
   def test_low_stock_needs_an_admin
     get '/api/admin_native/v1/low_stock'
     assert_equal 401, last_response.status
+  end
+
+  # --- 0.3: media library -----------------------------------------------------------------
+
+  # A 2x2 PNG, so Spree's content-type check accepts the attachment.
+  def png
+    chunk = ->(type, data) { [data.bytesize].pack('N') + type + data + [Zlib.crc32(type + data)].pack('N') }
+    raw = ("\x00".b + "\x0a\x14\x1e".b * 2) * 2
+    "\x89PNG\r\n\x1a\n".b + chunk.call('IHDR'.b, [2, 2, 8, 2, 0, 0, 0].pack('NNCCCCC')) +
+      chunk.call('IDAT'.b, Zlib::Deflate.deflate(raw)) + chunk.call('IEND'.b, ''.b)
+  end
+
+  def add_image(variant, alt: nil, at: Time.current)
+    image = Spree::Image.new(viewable: variant, alt: alt)
+    image.attachment.attach(io: StringIO.new(png), filename: 'test.png', content_type: 'image/png')
+    image.save!
+    image.update_column(:created_at, at)
+    image
+  end
+
+  def media(params = {})
+    get '/api/admin_native/v1/media', { per_page: 100 }.merge(params)
+    assert_equal 200, last_response.status, last_response.body
+    json
+  end
+
+  def test_media_needs_an_admin
+    get '/api/admin_native/v1/media'
+    assert_equal 401, last_response.status
+  end
+
+  def test_media_lists_product_and_variant_images_newest_first_with_urls
+    product, variants = make_product('ML zebra lamp', [5, 5], options: true)
+    on_master = add_image(product.master, alt: 'Front', at: 2.minutes.ago)
+    on_variant = add_image(variants.first, at: 1.minute.ago)
+    header 'X-Spree-Token', pair!
+    body = media(q: 'Zebra Lamp')
+    assert_equal [on_variant.id.to_s, on_master.id.to_s], body['data'].map { |r| r['id'] }
+    assert_equal 2, body.dig('meta', 'total_count')
+    variant_row, master_row = body['data']
+    assert_equal product.id.to_s, master_row['product_id']
+    assert_equal 'ML zebra lamp', master_row['product_name']
+    assert_nil master_row['variant_id'], 'master images show for every variant'
+    assert_equal 'Front', master_row['alt']
+    assert_equal 1, master_row['position']
+    assert_equal variants.first.id.to_s, variant_row['variant_id']
+    assert_nil variant_row['alt']
+    %w[mini_url product_url large_url].each do |key|
+      assert master_row[key].start_with?('http://localhost/rails/active_storage/representations/'), master_row[key]
+    end
+  end
+
+  def test_media_searches_by_sku_and_filters_missing_alt
+    product, = make_product('ML quokka mug', [5])
+    product.master.update!(sku: 'QUOKKA-MUG-1')
+    described = add_image(product.master, alt: 'A mug', at: 2.minutes.ago)
+    blank = add_image(product.master, alt: '  ', at: 1.minute.ago)
+    header 'X-Spree-Token', pair!
+    assert_equal [blank.id.to_s, described.id.to_s], media(q: 'quokka-mug')['data'].map { |r| r['id'] }
+    assert_equal [blank.id.to_s], media(q: 'QUOKKA', missing_alt: 'true')['data'].map { |r| r['id'] }
+    assert_nil json['data'].first['alt'], 'blank alt text reads as none'
+  end
+
+  def test_media_leaves_out_deleted_products_and_pages
+    product, = make_product('ML okapi rug', [5])
+    3.times { |i| add_image(product.master, at: (i + 1).minutes.ago) }
+    gone, = make_product('ML okapi gone', [5])
+    add_image(gone.master)
+    gone.destroy
+    header 'X-Spree-Token', pair!
+    first = media(q: 'okapi', per_page: 2, page: 1)
+    assert_equal 3, first.dig('meta', 'total_count')
+    assert_equal 2, first['data'].size
+    second = media(q: 'okapi', per_page: 2, page: 2)
+    assert_equal 1, second['data'].size
+    assert_equal [product.id.to_s], (first['data'] + second['data']).map { |r| r['product_id'] }.uniq
   end
 end

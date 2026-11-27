@@ -566,3 +566,101 @@ Pretty-printed afterwards. The secret scan from §e found nothing in them.
   `orders.capture` skips and the 6.0 "filters unpaid orders" test fails for
   want of an unpaid order. `node scripts/spree-up.mjs all --reset` restores
   the seed (and issues new API keys).
+
+## h. Product photos and the media library (2026-11-27)
+
+Established live on both stores with curl, then proven by
+`packages/spree-sdk/contract/media.contract.ts` (upload, alt text, reorder, variant, store-wide
+list, delete; the test deletes what it uploads). Neither seed has product images, so every
+photo on a store is one somebody uploaded.
+
+### 4.2: API v1 images
+
+```sh
+curl -s -H "X-Spree-Token: $KEY42" -F "image[attachment]=@red.png;type=image/png" -F "image[alt]=Front" \
+  "$B42/api/v1/products/2/images"                                       # 201, on the master
+curl -s -H "X-Spree-Token: $KEY42" -F "image[attachment]=@red.png;type=image/png" \
+  "$B42/api/v1/variants/118/images"                                     # 201, on variant 118
+curl -s -X PUT -H "X-Spree-Token: $KEY42" -H 'Content-Type: application/json' \
+  -d '{"image":{"position":1,"alt":"Back"}}' "$B42/api/v1/products/2/images/2"
+curl -s -X PUT -H "X-Spree-Token: $KEY42" -H 'Content-Type: application/json' \
+  -d '{"image":{"viewable_id":118}}' "$B42/api/v1/products/2/images/1"  # moves it to the variant
+curl -s -X DELETE -H "X-Spree-Token: $KEY42" "$B42/api/v1/variants/118/images/3"   # 204
+```
+
+- **`/products/:id/images` is the master's images only.** `index`, `update` and `destroy` look
+  the image up in `product.images` (delegated to the master), so a variant's image is **404**
+  there and has to go through `/api/v1/variants/:variant_id/images/:id`. The product show
+  (`GET /api/v1/products/:id`) has both: `master.images` and `variants[].images`, each with
+  `id`, `position`, `alt`, `viewable_id` and `mini_url` … `large_url`. The adapter reads the
+  gallery from the product show (with `Cache-Control: no-cache`, §g) and picks the endpoint
+  from the image's `viewable_id`.
+- **An image belongs to one variant.** "Shown for all variants" means on the master. Changing
+  the variant is `image[viewable_id]`; the image lands at the end of its new list.
+- **Positions count per variant** (`acts_as_list scope: [:viewable_id, :viewable_type]`). The
+  app shows the master's images first, then each variant's, and only moves an image among its
+  own variant's images (it explains this when asked to move one past another variant's).
+  Setting `image[position]` to the neighbour's position is the whole move: acts_as_list shifts
+  the images in between.
+- **Only JPEG, PNG and GIF** (`accepted_image_types`); anything else (an `image/heic` upload, live) is 422
+  `{"errors":{"attachment":["has not allowed content type"]}}`. A missing file is 422
+  `{"errors":{"attachment":["must be present"]}}`. The app re-encodes every photo as JPEG.
+- URLs are absolute Active Storage representation redirects; they resolve without auth (200
+  `image/png` after the redirect). `attachment_file_name` and `attachment_content_type` are
+  null on Active Storage images. Images controller responses are `private, must-revalidate`
+  (unlike product reads).
+- **No store-wide list.** There is no `/api/v1/images`, and product Ransack can't filter on
+  images. Without the gem the adapter pages through products (`show_discontinued=1`, name or
+  SKU search) and flattens their galleries, filtering missing alt text itself (cursor
+  `"<page>:<images read>"`, up to five server pages per call). The companion gem 0.3 adds
+  `GET /api/admin_native/v1/media?q=&missing_alt=1&page=&per_page=`: every image on live
+  variants of live products, newest first, product name or SKU search, blank alt (`NULL` or
+  whitespace) filter, `total_count`, and capability `media.library`. A gem without the endpoint
+  answers 404 (via 4.x's `/api/v1` redirect) and the adapter falls back to the scan.
+
+### 6.0: Admin API v3 media
+
+```sh
+curl -s -H "X-Spree-Api-Key: $KEY60" -F "file=@red.png;type=image/png" -F filename=red.png \
+  -F content_type=image/png "$B60/api/v3/admin/files"                   # 201 {"signed_id":"…","expires_at":…}
+curl -s -X POST -H "X-Spree-Api-Key: $KEY60" -H 'Content-Type: application/json' \
+  -d '{"signed_id":"…","alt":"Front","variant_ids":["variant_Aks1igzRC6"]}' \
+  "$B60/api/v3/admin/products/prod_s18jaGonyx/media"                  # 201, appended (position n+1)
+curl -s -X PATCH -H "X-Spree-Api-Key: $KEY60" -H 'Content-Type: application/json' \
+  -d '{"position":1}' "$B60/api/v3/admin/products/prod_s18jaGonyx/media/media_gbHJdmfrXB"
+curl -sg -H "X-Spree-Api-Key: $KEY60" "$B60/api/v3/admin/media?q[attached]=1&q[alt_blank]=1"
+```
+
+- **Spree 6.0.6 drops a multipart `attachment` on the media endpoint.** The request schema
+  documents it ("The file itself, sent as multipart form data"), but `media_attributes` removes
+  `attachment` before building the row, so `-F attachment=@…` (top-level or `media[attachment]`)
+  is 422 "Attachment can't be blank". Upload to `POST /api/v3/admin/files` (multipart `file`,
+  `filename`, `content_type`; the floor scope is `write_products`) and create the media with its
+  `signed_id`, which expires after a day.
+- Nested routes are `index`, `create`, `update` and `destroy` only (no `show`). The product's
+  list includes legacy media still on the default variant. Media rows carry `media_type`
+  (`image`, `video`, `external_video`); the app manages images and leaves videos as they are.
+- `variant_ids` links product-level media to any number of variants (`[]` clears it; variants
+  of other products are dropped silently). `alt: null` clears alt text. Unknown `q[…]` filters
+  are ignored, not refused.
+- **The media library** (`GET /api/v3/admin/media`) is the store's files, newest first, **one
+  row per file** (`distinct_by_file`): a file placed on three products is listed once, as its
+  newest placement. Ransack allows `alt`, `media_type`, `created_at`, `updated_at`, `filename`,
+  `byte_size` and the scopes `attached`, `unattached`, `filename_cont`, so `q[alt_blank]=1`
+  finds missing alt text, but **nothing filters by product**. Rows give `product_id` only; names
+  come from `GET /products?q[id_in][]=…` (prefixed ids work there). It also lists category and
+  collection images and unplaced uploads; the adapter asks for `attached` images and keeps rows
+  with a `product_id`. A product-name search goes through `GET /products?q[search]=…&expand=media`
+  instead. Rows without a `store_id` (pre-6.0 data the upgrade task hasn't reached) are not in
+  the library at all *(gem source)*.
+- Deleting from the library deletes the file and is refused with its usage (422) unless
+  `detach=true`; the app only removes placements through the product's nested endpoint. *(gem source)*
+- Renditions are WebP `representations/proxy` URLs that load without auth (the contract test fetches them).
+
+### Docker note: re-copied gem migration
+
+`infra/spree/4.2`'s entrypoint runs `railties:install:migrations FROM=spree_admin_native` at
+every boot. A recreated container has a fresh filesystem, so the gem's migration is copied again
+under a new timestamp and ran again against tables that already exist: spree42 exited with
+`PG::DuplicateTable` on `spree_admin_native_devices`. The gem's migration now uses
+`if_not_exists` for its tables and indexes, so a re-copied migration is a no-op.

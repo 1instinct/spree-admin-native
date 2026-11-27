@@ -4,6 +4,7 @@ import {
   SpreeError,
   type StoreProbe,
   unsupportedCustomers,
+  unsupportedMedia,
   unsupportedProducts,
   unsupportedPromotions,
 } from '@instincts/spree-sdk';
@@ -48,6 +49,7 @@ function adapter(
     products: unsupportedProducts,
     customers: unsupportedCustomers,
     promotions: { ...unsupportedPromotions, ...promotions },
+    media: unsupportedMedia,
   };
 }
 
@@ -527,5 +529,105 @@ describe('products and customers', () => {
       .catch((e: unknown) => e);
     expect(err).toMatchObject({ code: 'PRECONDITION_FAILED' });
     expect((err as TRPCError).cause).toMatchObject({ kind: 'capability' });
+  });
+});
+
+describe('media', () => {
+  const image = {
+    id: 'media_1',
+    url: 'https://shop.test/large/1.webp',
+    thumbUrl: 'https://shop.test/small/1.webp',
+    alt: null,
+    position: 1,
+    variantIds: [],
+  };
+  function withMedia() {
+    const media = {
+      list: vi.fn(async () => [image]),
+      upload: vi.fn(async () => [image]),
+      update: vi.fn(async () => [image]),
+      move: vi.fn(async () => [image]),
+      remove: vi.fn(async () => []),
+      library: vi.fn(async () => ({
+        items: [{ ...image, productId: 'prod_1', productName: 'Tote' }],
+        nextCursor: null,
+      })),
+    };
+    return { a: { ...adapter(), media } as SpreeAdapter, media };
+  }
+  const ref = { id: 'prod_1' };
+  const file = { uri: 'file:///tmp/photo.jpg', name: 'photo.jpg', type: 'image/jpeg' };
+
+  it('gates gallery procedures on products.media and the library on media.library', async () => {
+    const { a, media } = withMedia();
+    const reader = createCaller(ctx(['products.read', 'products.write'], a));
+    await expect(reader.media.list({ product: ref })).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+      message: expect.stringMatching(/product photos/),
+    });
+    await expect(reader.media.upload({ product: ref, file })).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+    await expect(createCaller(ctx(['products.media'], a)).media.library({})).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+    expect(media.upload).not.toHaveBeenCalled();
+    expect(media.library).not.toHaveBeenCalled();
+  });
+
+  it('lists, uploads with trimmed alt text and only the variants given', async () => {
+    const { a, media } = withMedia();
+    const caller = createCaller(ctx(['products.media'], a));
+    expect(await caller.media.list({ product: ref })).toEqual([image]);
+    await caller.media.upload({ product: ref, file, alt: ' Front ' });
+    expect(media.upload).toHaveBeenCalledWith(ref, { file, alt: 'Front' });
+    await caller.media.upload({ product: ref, file, alt: '', variantIds: ['variant_1'] });
+    expect(media.upload).toHaveBeenLastCalledWith(ref, { file, variantIds: ['variant_1'] });
+    await expect(
+      caller.media.upload({ product: ref, file: { ...file, type: 'application/pdf' } }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('updates alt text and variants, moves and removes', async () => {
+    const { a, media } = withMedia();
+    const caller = createCaller(ctx(['products.media'], a));
+    await caller.media.update({ product: ref, imageId: 'media_1', alt: '  ' });
+    expect(media.update).toHaveBeenCalledWith(ref, 'media_1', { alt: null });
+    await caller.media.update({ product: ref, imageId: 'media_1', variantIds: [] });
+    expect(media.update).toHaveBeenLastCalledWith(ref, 'media_1', { variantIds: [] });
+    await expect(
+      caller.media.update({ product: ref, imageId: 'media_1', alt: 'x'.repeat(256) }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await caller.media.move({ product: ref, imageId: 'media_1', toIndex: 0 });
+    expect(media.move).toHaveBeenCalledWith(ref, 'media_1', 0);
+    await expect(caller.media.move({ product: ref, imageId: 'media_1', toIndex: -1 })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    expect(await caller.media.remove({ product: ref, imageId: 'media_1' })).toEqual([]);
+  });
+
+  it('pages the library with search and the missing-alt filter', async () => {
+    const { a, media } = withMedia();
+    const caller = createCaller(ctx(['media.library'], a));
+    const page = await caller.media.library({});
+    expect(page.items[0]?.productName).toBe('Tote');
+    expect(media.library).toHaveBeenCalledWith({ missingAlt: false, perPage: 24, cursor: null });
+    await caller.media.library({ query: ' tote ', missingAlt: true, cursor: '2' });
+    expect(media.library).toHaveBeenLastCalledWith({
+      missingAlt: true,
+      perPage: 24,
+      cursor: '2',
+      query: 'tote',
+    });
+  });
+
+  it('keeps the Spree error kind of a refused write', async () => {
+    const { a } = withMedia();
+    a.media.move = async () => {
+      throw new SpreeError({ kind: 'invalid', status: 422, message: 'Change which variant first.' });
+    };
+    await expect(
+      createCaller(ctx(['products.media'], a)).media.move({ product: ref, imageId: 'media_1', toIndex: 0 }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST', message: 'Change which variant first.' });
   });
 });
