@@ -1,4 +1,4 @@
-import { Order } from '@instincts/spree-domain';
+import { Customer, Order, Product } from '@instincts/spree-domain';
 import {
   type SpreeAdapter,
   SpreeError,
@@ -285,5 +285,169 @@ describe('pairing and companion procedures', () => {
       });
       expect(await caller.orders.refundReasons()).toEqual([{ id: '1', name: 'Return processing' }]);
     });
+  });
+});
+
+describe('products and customers', () => {
+  const product = Product.parse({
+    id: 'prod_1',
+    name: 'Denim Shirt',
+    slug: 'denim-shirt',
+    status: 'active',
+    description: null,
+    imageUrl: null,
+    variants: [
+      {
+        id: 'variant_1',
+        sku: 'SHIRT-S',
+        optionsText: 'Size: S',
+        isMaster: false,
+        price: { amount: '19.99', currency: 'USD' },
+        compareAtPrice: null,
+        totalOnHand: 4,
+        imageUrl: null,
+      },
+    ],
+    updatedAt: null,
+  });
+  const customer = Customer.parse({
+    id: 'cust_1',
+    email: 'ada@example.com',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    phone: null,
+    ordersCount: 2,
+    totalSpent: { amount: '40.00', currency: 'USD' },
+    createdAt: '2026-11-26T00:00:00Z',
+    defaultAddress: null,
+  });
+
+  function catalog() {
+    const products = {
+      list: vi.fn(async () => ({ items: [product], nextCursor: null, totalCount: 1 })),
+      get: vi.fn(async () => product),
+      update: vi.fn(async () => product),
+      updateVariant: vi.fn(async () => product),
+      setStock: vi.fn(async () => product),
+    };
+    const customers = {
+      list: vi.fn(async () => ({ items: [customer], nextCursor: '2' })),
+      get: vi.fn(async () => customer),
+    };
+    return { a: { ...adapter(), products, customers } as SpreeAdapter, products, customers };
+  }
+  const ALL = ['products.read', 'products.write', 'inventory.adjust', 'customers.read'];
+  const ref = { id: product.id };
+
+  it('lists products with defaults, search and status', async () => {
+    const { a, products } = catalog();
+    const caller = createCaller(ctx(['products.read'], a));
+    expect((await caller.products.list({})).items[0]?.id).toBe('prod_1');
+    expect(products.list).toHaveBeenCalledWith({ status: 'all', perPage: 25, cursor: null });
+    await caller.products.list({ query: ' shirt ', status: 'draft', cursor: '2:5', perPage: 10 });
+    expect(products.list).toHaveBeenLastCalledWith({
+      status: 'draft',
+      perPage: 10,
+      cursor: '2:5',
+      query: 'shirt',
+    });
+    expect((await caller.products.get({ id: 'prod_1' })).name).toBe('Denim Shirt');
+  });
+
+  it('gates reads, writes and stock on their own capabilities', async () => {
+    const { a, products } = catalog();
+    await expect(createCaller(ctx(['orders.read'], a)).products.list({})).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+      message: expect.stringMatching(/reading products/),
+    });
+    const reader = createCaller(ctx(['products.read'], a));
+    await expect(reader.products.update({ product: ref, name: 'X' })).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+    await expect(
+      createCaller(ctx(['products.read', 'products.write'], a)).products.setStock({
+        product: ref,
+        variantId: 'variant_1',
+        countOnHand: 3,
+      }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED', message: expect.stringMatching(/stock/) });
+    expect(products.update).not.toHaveBeenCalled();
+    expect(products.setStock).not.toHaveBeenCalled();
+  });
+
+  it('updates a product with only the fields given', async () => {
+    const { a, products } = catalog();
+    const caller = createCaller(ctx(ALL, a));
+    await caller.products.update({ product: ref, name: ' Renamed ', status: 'archived' });
+    expect(products.update).toHaveBeenCalledWith(ref, { name: 'Renamed', status: 'archived' });
+    await caller.products.update({ product: ref, description: null });
+    expect(products.update).toHaveBeenLastCalledWith(ref, { description: null });
+    await expect(caller.products.update({ product: ref, name: '  ' })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+    await expect(
+      caller.products.update({ product: ref, status: 'deleted' as 'active' }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('accepts prices as positive decimals with at most two places', async () => {
+    const { a, products } = catalog();
+    const caller = createCaller(ctx(ALL, a));
+    await caller.products.updateVariant({
+      product: ref,
+      variantId: 'variant_1',
+      price: '24.50',
+      compareAtPrice: null,
+      sku: ' ',
+    });
+    expect(products.updateVariant).toHaveBeenCalledWith(ref, 'variant_1', {
+      price: '24.50',
+      compareAtPrice: null,
+      sku: null,
+    });
+    await caller.products.updateVariant({ product: ref, variantId: 'variant_1', compareAtPrice: '30' });
+    expect(products.updateVariant).toHaveBeenLastCalledWith(ref, 'variant_1', { compareAtPrice: '30' });
+    for (const price of ['0', '0.00', '1.999', '-1', '1,50', 'abc']) {
+      await expect(
+        caller.products.updateVariant({ product: ref, variantId: 'variant_1', price }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    }
+    await expect(
+      caller.products.updateVariant({ product: ref, variantId: 'variant_1', compareAtPrice: '0' }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    expect(products.updateVariant).toHaveBeenCalledTimes(2);
+  });
+
+  it('sets stock to a non-negative whole number', async () => {
+    const { a, products } = catalog();
+    const caller = createCaller(ctx(ALL, a));
+    await caller.products.setStock({ product: ref, variantId: 'variant_1', countOnHand: 0 });
+    expect(products.setStock).toHaveBeenCalledWith(ref, 'variant_1', 0);
+    for (const countOnHand of [-1, 2.5]) {
+      await expect(
+        caller.products.setStock({ product: ref, variantId: 'variant_1', countOnHand }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    }
+    expect(products.setStock).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists and gets customers behind customers.read', async () => {
+    const { a, customers } = catalog();
+    const caller = createCaller(ctx(['customers.read'], a));
+    const page = await caller.customers.list({ query: ' ada ' });
+    expect(page).toMatchObject({ nextCursor: '2', items: [{ email: 'ada@example.com' }] });
+    expect(customers.list).toHaveBeenCalledWith({ perPage: 25, cursor: null, query: 'ada' });
+    expect((await caller.customers.get({ id: 'cust_1' })).ordersCount).toBe(2);
+    await expect(createCaller(ctx(['orders.read'], a)).customers.list({})).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+    });
+  });
+
+  it("turns an adapter's capability error into PRECONDITION_FAILED", async () => {
+    const err = await createCaller(ctx(ALL, adapter()))
+      .products.list({})
+      .catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect((err as TRPCError).cause).toMatchObject({ kind: 'capability' });
   });
 });
