@@ -16,6 +16,9 @@ and the web.
   numbers, capture, refund, cancel, notes.
 - **Products and inventory**: edit, photograph, adjust stock, scan to find a variant.
 - **Customers, promotions and full store settings.**
+- **Your app's own admin data**: menus, homepage sections, push notifications, firmware… An app
+  built on Spree registers each type with the companion gem and gets list, detail and edit
+  screens under More, with no app release.
 - **Extensions** from a community registry, including server-rendered "Blocks" extensions
   any Spree developer can write in Ruby.
 - **Works with your Spree as it is.** No server of ours. An optional companion gem and
