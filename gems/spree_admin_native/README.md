@@ -7,6 +7,8 @@ the open-source mobile admin app for Spree. The app works without it; the gem ad
   API key. Each device gets its own token, which you can sign out at any time.
 - **New order notifications.** A push to every paired device when an order is placed.
 - **Home screen numbers.** Today's sales, orders to fulfil, payments due and low stock in one request.
+- **Order creation helpers (Spree 4.2–4.3).** Card-free payment methods and draft deletion for
+  orders the merchant creates in the app.
 - **Capabilities.** Tells the app what your store supports, including features your own
   extensions add.
 
@@ -75,6 +77,8 @@ All under `/api/admin_native/v1`.
 | `GET promotions/:id`                           | device token or admin API key | One promotion                                                                                                                          |
 | `POST promotions`                              | device token or admin API key | `{name, code?, description?, starts_at?, expires_at?, usage_limit?, discount: {type: percent\|fixed, amount}}`                         |
 | `PATCH promotions/:id`                         | device token or admin API key | Any of those fields; `discount` only on promotions with a single order discount                                                        |
+| `GET payment_methods`                          | device token or admin API key | Payment methods that need no card (active, offered in the back office, no source): `{data: [{id, name, description}]}`                 |
+| `DELETE orders/:number`                        | device token or admin API key | Delete a draft order a staff member started; placed orders and shoppers' carts are refused (422)                                       |
 
 Send the token as `X-Spree-Token` (or `Authorization: Bearer`). Device tokens also work on Spree's
 API v1 wherever an API key does.
@@ -84,7 +88,9 @@ options) that track inventory, on live products, with stock summed across locati
 `low_stock_threshold`. The summary counts exactly the variants `low_stock` lists.
 
 Refunds and promotions exist for Spree 4.2–4.3, whose API v1 has no refund action and only shows
-one promotion. The app uses Spree's own APIs for both on 4.4+. Promotions made elsewhere with
+one promotion. Order creation works on API v1 alone; the gem adds what v1 can't say or do: which
+payment methods need no card (cash, check, bank transfer, including back-office-only ones) and
+deleting a draft the merchant abandons (without the gem it is emptied, like an abandoned cart). The app uses Spree's own APIs for both on 4.4+. Promotions made elsewhere with
 other rules or actions are listed and can be renamed, rescheduled or expired; their discount
 stays as Spree admin set it (`editable_discount: false`).
 

@@ -1,5 +1,6 @@
 const MESSAGES: Record<string, string> = {
   'orders.read': "This store's API doesn't allow reading orders with your account.",
+  'orders.create': 'Creating orders from the app needs Spree 4.2–4.3 (API v1) or Spree 5.4+.',
   'products.read': "This store's API doesn't allow reading products with your account.",
   'products.write': "This store's API doesn't allow editing products with your account.",
   'inventory.adjust': "This store's API doesn't allow changing stock with your account.",

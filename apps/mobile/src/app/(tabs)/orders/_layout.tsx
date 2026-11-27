@@ -16,6 +16,8 @@ export default function OrdersLayout() {
     >
       <Stack.Screen name="index" options={{ title: 'Orders', headerLargeTitle: true }} />
       <Stack.Screen name="[id]" options={{ title: '' }} />
+      <Stack.Screen name="new" options={{ title: 'New order' }} />
+      <Stack.Screen name="draft" options={{ title: 'Review order' }} />
       <Stack.Screen
         name="ship"
         options={{

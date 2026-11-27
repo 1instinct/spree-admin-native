@@ -1,6 +1,8 @@
 import type {
+  Address,
   Customer,
   Fulfillment,
+  ManualPaymentMethod,
   Order,
   OrderListFilter,
   Page,
@@ -37,6 +39,35 @@ export interface RefundInput {
   reasonId?: string | null;
 }
 
+export interface DraftItemInput {
+  variantId: string;
+  /** At least 1. */
+  quantity: number;
+}
+
+/**
+ * What a draft order holds. `updateDraft` replaces it whole: items left out are removed.
+ * Addresses use the domain shape; `stateCode` is the state's abbreviation (`OR`).
+ */
+export interface DraftOrderInput {
+  /** An existing customer, or null for a guest order under `email`. */
+  customerId: string | null;
+  email: string;
+  items: DraftItemInput[];
+  shipAddress: Address;
+  /** null bills the shipping address. */
+  billAddress: Address | null;
+}
+
+export interface PlaceOrderInput {
+  /**
+   * A manual payment method from `paymentMethods`, for the order total. `markPaid` captures it
+   * (the money is in hand); otherwise it stays pending and the order shows a balance due.
+   * null places the order with no payment recorded, which only Spree 5.4+ allows.
+   */
+  payment: { methodId: string; markPaid: boolean } | null;
+}
+
 /**
  * Orders: reads, plus the merchant's actions. Each action returns the order as it now is.
  * An action the store's API can't do throws a `capability` SpreeError; screens gate on the
@@ -53,6 +84,18 @@ export interface OrdersPort {
   cancel(order: OrderRef): Promise<Order>;
   refund(order: OrderRef, input: RefundInput): Promise<Order>;
   refundReasons(): Promise<RefundReason[]>;
+
+  // Creating an order (`orders.create`): a draft on the server, then placed.
+  /** Returns the draft with its shipments' rates once the address allows quoting them. */
+  createDraft(input: DraftOrderInput): Promise<Order>;
+  updateDraft(order: OrderRef, input: DraftOrderInput): Promise<Order>;
+  selectShippingRate(order: OrderRef, fulfillment: FulfillmentRef, rateId: string): Promise<Order>;
+  /** Payment methods that need no card details, for this draft. */
+  paymentMethods(order: OrderRef): Promise<ManualPaymentMethod[]>;
+  /** Completes the draft; the order is then `placed`. */
+  place(order: OrderRef, input: PlaceOrderInput): Promise<Order>;
+  /** Abandons a draft. Placed orders are canceled instead, never discarded. */
+  discardDraft(order: OrderRef): Promise<void>;
 }
 
 // --- Products ------------------------------------------------------------------------------

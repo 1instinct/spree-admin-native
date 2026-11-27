@@ -21,7 +21,12 @@ export {
 export { mapV1Order as mapApiV1Order } from './api-v1/mapOrder';
 export { mapV1Product as mapApiV1Product, mapV1User as mapApiV1Customer } from './api-v1/mapProduct';
 export { mapOrderDocument as mapPlatformV2Orders } from './platform-v2/mapOrder';
-export { unsupportedCustomers, unsupportedProducts, unsupportedPromotions } from './unsupported';
+export {
+  unsupportedCustomers,
+  unsupportedOrderCreation,
+  unsupportedProducts,
+  unsupportedPromotions,
+} from './unsupported';
 
 /** The adapter for a store's preferred API family. `transport` must already carry auth. */
 export function createAdapter(

@@ -1,5 +1,5 @@
 import { unsupported } from '../../errors';
-import type { CustomersPort, ProductsPort, PromotionsPort } from '../../ports';
+import type { CustomersPort, OrdersPort, ProductsPort, PromotionsPort } from '../../ports';
 
 const refuse = (capability: string) => async (): Promise<never> => {
   throw unsupported(capability);
@@ -24,4 +24,17 @@ export const unsupportedPromotions: PromotionsPort = {
   get: refuse('promotions.read'),
   create: refuse('promotions.write'),
   update: refuse('promotions.write'),
+};
+
+/** Order creation for a family the contract suite hasn't proven (`orders.create`). */
+export const unsupportedOrderCreation: Pick<
+  OrdersPort,
+  'createDraft' | 'updateDraft' | 'selectShippingRate' | 'paymentMethods' | 'place' | 'discardDraft'
+> = {
+  createDraft: refuse('orders.create'),
+  updateDraft: refuse('orders.create'),
+  selectShippingRate: refuse('orders.create'),
+  paymentMethods: refuse('orders.create'),
+  place: refuse('orders.create'),
+  discardDraft: refuse('orders.create'),
 };

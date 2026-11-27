@@ -12,7 +12,8 @@ and the web.
 - **Order notifications** with a till chime the moment a sale lands.
 - **Home** that tells you what needs doing today: orders to fulfil, payments to capture,
   low stock.
-- **Orders**: fulfil with barcode-scanned tracking numbers, capture, refund, cancel, notes.
+- **Orders**: create orders for phone and in-person sales, fulfil with barcode-scanned tracking
+  numbers, capture, refund, cancel, notes.
 - **Products and inventory**: edit, photograph, adjust stock, scan to find a variant.
 - **Customers, promotions and full store settings.**
 - **Extensions** from a community registry, including server-rendered "Blocks" extensions
