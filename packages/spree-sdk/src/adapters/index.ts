@@ -3,14 +3,23 @@ import { type CompanionPort, companion } from '../companion';
 import { companionPromotions } from '../companion/promotions';
 import type { SpreeAdapter } from '../ports';
 import type { Transport } from '../transport';
+import { adminV3Customers } from './admin-v3/customers';
 import { adminV3Orders } from './admin-v3/orders';
+import { adminV3Products } from './admin-v3/products';
 import { adminV3Promotions } from './admin-v3/promotions';
+import { apiV1Customers } from './api-v1/customers';
 import { apiV1Orders } from './api-v1/orders';
+import { apiV1Products } from './api-v1/products';
 import { platformV2Orders } from './platform-v2/orders';
 import { unsupportedCustomers, unsupportedProducts, unsupportedPromotions } from './unsupported';
 
 export { mapOrder as mapAdminV3Order } from './admin-v3/mapOrder';
+export {
+  mapV3Customer as mapAdminV3Customer,
+  mapV3Product as mapAdminV3Product,
+} from './admin-v3/mapProduct';
 export { mapV1Order as mapApiV1Order } from './api-v1/mapOrder';
+export { mapV1Product as mapApiV1Product, mapV1User as mapApiV1Customer } from './api-v1/mapProduct';
 export { mapOrderDocument as mapPlatformV2Orders } from './platform-v2/mapOrder';
 export { unsupportedCustomers, unsupportedProducts, unsupportedPromotions } from './unsupported';
 
@@ -40,6 +49,8 @@ function baseAdapter(family: ApiFamily, transport: Transport, gem?: CompanionPor
         ...pending,
         orders: apiV1Orders(transport, gem),
         promotions: gem ? companionPromotions(transport) : unsupportedPromotions,
+        products: apiV1Products(transport),
+        customers: apiV1Customers(transport),
       };
     case 'platform-v2':
       return { family, orders: platformV2Orders(transport), ...pending };
@@ -49,6 +60,8 @@ function baseAdapter(family: ApiFamily, transport: Transport, gem?: CompanionPor
         ...pending,
         orders: adminV3Orders(transport),
         promotions: adminV3Promotions(transport),
+        products: adminV3Products(transport),
+        customers: adminV3Customers(transport),
       };
   }
 }

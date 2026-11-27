@@ -1,24 +1,8 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect } from 'vitest';
 import { createAdapter } from '../src/adapters';
 import { probeStore } from '../src/capabilities/probe';
 import type { SpreeAdapter } from '../src/ports';
-import { baseTransport, enabled, env, signIn } from './env';
-
-const results: Record<string, 'pass' | 'fail'> = {};
-
-function proves(capability: string, name: string, fn: () => Promise<void>) {
-  it(`[${capability}] ${name}`, async () => {
-    try {
-      await fn();
-      if (results[capability] !== 'fail') results[capability] = 'pass';
-    } catch (e) {
-      results[capability] = 'fail';
-      throw e;
-    }
-  });
-}
+import { baseTransport, enabled, env, proves, signIn, writeResults } from './env';
 
 /** Creates promotions it leaves expired (there is no delete in the port); reset with `spree-up --reset`. */
 describe.runIf(enabled)(`contract: promotions on Spree ${env.label}`, () => {
@@ -37,14 +21,7 @@ describe.runIf(enabled)(`contract: promotions on Spree ${env.label}`, () => {
     currency = probe.currency ?? 'USD';
   });
 
-  afterAll(() => {
-    const dir = resolve(__dirname, '../../../contract-results');
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(
-      resolve(dir, `${env.label}-promotions.json`),
-      `${JSON.stringify({ label: env.label, family: env.family, results }, null, 2)}\n`,
-    );
-  });
+  afterAll(writeResults);
 
   proves('promotions.write', 'creates a percent coupon', async () => {
     const p = await adapter.promotions.create({
