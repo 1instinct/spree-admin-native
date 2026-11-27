@@ -60,23 +60,28 @@ work the same way: each device sends the token for the app it is running.
 
 All under `/api/admin_native/v1`.
 
-| Endpoint                                       | Auth                          | What                                                                                                           |
-| ---------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `GET capabilities`                             | none                          | API families, extra capabilities and sign-in methods, store name and currency                                  |
-| `POST pairings/exchange`                       | one-time code                 | `{code, device_name, platform}` → `{token, device, user}`                                                      |
-| `GET summary`                                  | device token or admin API key | Today's orders and sales, orders to fulfil, payments due, low-stock variants                                   |
-| `GET devices`                                  | device token or admin API key | Your paired devices                                                                                            |
-| `PATCH devices/current`                        | device token                  | `{push_token, push_enabled}`                                                                                   |
-| `DELETE devices/:id`                           | device token or admin API key | Sign a device out                                                                                              |
-| `GET refund_reasons`                           | device token or admin API key | Active refund reasons                                                                                          |
-| `POST orders/:number/payments/:number/refunds` | device token or admin API key | `{amount, reason_id?}` → refund through the payment's gateway (default reason: Return processing)              |
-| `GET promotions`                               | device token or admin API key | `q`, `status` (`active`, `scheduled`, `expired`), `page`, `per_page`                                           |
-| `GET promotions/:id`                           | device token or admin API key | One promotion                                                                                                  |
-| `POST promotions`                              | device token or admin API key | `{name, code?, description?, starts_at?, expires_at?, usage_limit?, discount: {type: percent\|fixed, amount}}` |
-| `PATCH promotions/:id`                         | device token or admin API key | Any of those fields; `discount` only on promotions with a single order discount                                |
+| Endpoint                                       | Auth                          | What                                                                                                                                   |
+| ---------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET capabilities`                             | none                          | API families, extra capabilities and sign-in methods, store name and currency                                                          |
+| `POST pairings/exchange`                       | one-time code                 | `{code, device_name, platform}` → `{token, device, user}`                                                                              |
+| `GET summary`                                  | device token or admin API key | Today's orders and sales, orders to fulfil, payments due, low-stock variants                                                           |
+| `GET low_stock`                                | device token or admin API key | Products with low-stock variants, lowest first: `{data: [{product_id, low_variants, lowest_on_hand}], meta: {total_count, threshold}}` |
+| `GET devices`                                  | device token or admin API key | Your paired devices                                                                                                                    |
+| `PATCH devices/current`                        | device token                  | `{push_token, push_enabled}`                                                                                                           |
+| `DELETE devices/:id`                           | device token or admin API key | Sign a device out                                                                                                                      |
+| `GET refund_reasons`                           | device token or admin API key | Active refund reasons                                                                                                                  |
+| `POST orders/:number/payments/:number/refunds` | device token or admin API key | `{amount, reason_id?}` → refund through the payment's gateway (default reason: Return processing)                                      |
+| `GET promotions`                               | device token or admin API key | `q`, `status` (`active`, `scheduled`, `expired`), `page`, `per_page`                                                                   |
+| `GET promotions/:id`                           | device token or admin API key | One promotion                                                                                                                          |
+| `POST promotions`                              | device token or admin API key | `{name, code?, description?, starts_at?, expires_at?, usage_limit?, discount: {type: percent\|fixed, amount}}`                         |
+| `PATCH promotions/:id`                         | device token or admin API key | Any of those fields; `discount` only on promotions with a single order discount                                                        |
 
 Send the token as `X-Spree-Token` (or `Authorization: Bearer`). Device tokens also work on Spree's
 API v1 wherever an API key does.
+
+"Low stock" means sellable variants (option variants, or the master of a product without
+options) that track inventory, on live products, with stock summed across locations at or under
+`low_stock_threshold`. The summary counts exactly the variants `low_stock` lists.
 
 Refunds and promotions exist for Spree 4.2–4.3, whose API v1 has no refund action and only shows
 one promotion. The app uses Spree's own APIs for both on 4.4+. Promotions made elsewhere with

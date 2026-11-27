@@ -48,7 +48,7 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
     assert_equal 200, last_response.status
     assert_includes json['api_families'], 'api-v1'
     assert_includes json['capabilities'], 'notifications.push'
-    %w[orders.refund promotions.read promotions.write].each { |c| assert_includes json['capabilities'], c }
+    %w[orders.refund promotions.read promotions.write inventory.lowStock].each { |c| assert_includes json['capabilities'], c }
     assert_includes json['auth_methods'], 'pairing'
     assert_equal SpreeAdminNative::VERSION, json['gem_version']
   end
@@ -225,12 +225,13 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
 
   def test_refund_over_the_paid_amount_is_refused
     payment = refundable_payment
+    refunds_before = payment.refunds.count
     header 'X-Spree-Token', pair!
     json_post "/api/admin_native/v1/orders/#{payment.order.number}/payments/#{payment.number}/refunds",
               amount: (payment.credit_allowed + 1).to_s
     assert_equal 422, last_response.status
     assert_equal 'invalid', json.dig('error', 'code')
-    assert_equal 0, payment.refunds.count
+    assert_equal refunds_before, payment.refunds.count
   end
 
   def test_refund_needs_an_amount_and_a_known_payment
@@ -324,5 +325,75 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
           'CONTENT_TYPE' => 'application/json'
     assert_equal 200, last_response.status
     assert_equal 'Free shipping weekend', json.dig('data', 'name')
+  end
+
+  # --- 0.3: low stock ---------------------------------------------------------------------
+
+  def make_product(name, stock, options: false, track: true, discontinued: false)
+    product = Spree::Product.create!(name: name, price: 10, shipping_category: Spree::ShippingCategory.first,
+                                     available_on: 1.day.ago)
+    product.update_column(:discontinue_on, 1.day.ago) if discontinued
+    location = Spree::StockLocation.first
+    variants = if options
+                 option_type = Spree::OptionType.first || Spree::OptionType.create!(name: 'size', presentation: 'Size')
+                 product.option_types << option_type unless product.option_types.include?(option_type)
+                 stock.each_with_index.map do |_, i|
+                   value = option_type.option_values.create!(name: "#{name}-#{i}", presentation: "#{name} #{i}")
+                   product.variants.create!(option_values: [value], price: 10, track_inventory: track)
+                 end
+               else
+                 product.master.update!(track_inventory: track)
+                 [product.master]
+               end
+    variants.zip(stock).each { |v, n| location.stock_item_or_create(v).update_columns(count_on_hand: n) }
+    product.master.stock_items.update_all(count_on_hand: 0) if options
+    [product, variants]
+  end
+
+  def low_stock_ids
+    get '/api/admin_native/v1/low_stock', per_page: 100
+    assert_equal 200, last_response.status, last_response.body
+    json['data'].map { |r| r['product_id'] }
+  end
+
+  def test_low_stock_lists_sellable_tracked_variants_of_live_products
+    low, = make_product('LS low', [1])
+    fine, = make_product('LS fine', [50])
+    with_options, = make_product('LS sizes', [0, 30], options: true)
+    untracked, = make_product('LS untracked', [0], track: false)
+    retired, = make_product('LS retired', [0], discontinued: true)
+    header 'X-Spree-Token', pair!
+    ids = low_stock_ids
+    assert_includes ids, low.id.to_s
+    assert_includes ids, with_options.id.to_s
+    [fine, untracked, retired].each { |p| refute_includes ids, p.id.to_s }
+    row = json['data'].find { |r| r['product_id'] == with_options.id.to_s }
+    assert_equal 1, row['low_variants'], 'the master of a product with options is not counted'
+    assert_equal 2, json.dig('meta', 'threshold')
+  end
+
+  def test_low_stock_sums_stock_across_locations
+    product, variants = make_product('LS two places', [1])
+    variant = variants.first
+    second = Spree::StockLocation.create!(name: 'Second warehouse', country: Spree::Country.first)
+    second.stock_item_or_create(variant).update_columns(count_on_hand: 10)
+    header 'X-Spree-Token', pair!
+    refute_includes low_stock_ids, product.id.to_s
+  end
+
+  def test_summary_counts_the_same_variants_the_list_shows
+    make_product('LS a', [0])
+    make_product('LS b', [1, 2], options: true)
+    header 'X-Spree-Token', pair!
+    get '/api/admin_native/v1/summary'
+    count = json['low_stock_variants']
+    get '/api/admin_native/v1/low_stock', per_page: 100
+    assert_equal count, json['data'].sum { |r| r['low_variants'] }
+    assert_operator count, :>=, 3
+  end
+
+  def test_low_stock_needs_an_admin
+    get '/api/admin_native/v1/low_stock'
+    assert_equal 401, last_response.status
   end
 end

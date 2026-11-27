@@ -20,7 +20,7 @@ module SpreeAdminNative
       private
 
       def capabilities
-        list = %w[notifications.push analytics.summary orders.refund]
+        list = %w[notifications.push analytics.summary orders.refund inventory.lowStock]
         # Coupon codes live on the promotion until Spree 5 moved them to their own table.
         list += %w[promotions.read promotions.write] if Spree::Promotion.column_names.include?('code')
         list + SpreeAdminNative.config.extra_capabilities
