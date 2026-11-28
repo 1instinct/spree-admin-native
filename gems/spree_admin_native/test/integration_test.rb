@@ -2206,6 +2206,8 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
       assert_equal ['snoozed', '2026-11-29T09:00:00Z'], body['data'].values_at('status', 'snoozed_until')
       inbox(:patch, '/conversations/12', assignee_id: nil, snoozed_until: nil)
       assert_equal({ assignee_id: nil, snoozed_until: nil }, adapter.calls.last.last, 'only the keys sent')
+      inbox(:patch, '/conversations/12', assignee_id: 'me')
+      assert_equal({ assignee_id: @admin.id.to_s }, adapter.calls.last.last, "'me' is the signed-in admin")
       inbox(:patch, '/conversations/12', status: 'deleted')
       assert_equal 422, last_response.status
       inbox(:patch, '/conversations/12', snoozed_until: 'tomorrow')
@@ -2218,7 +2220,7 @@ class SpreeAdminNativeIntegrationTest < Minitest::Test
       assert_equal [:mark_read, 12, @admin.id], adapter.calls.last
 
       body = inbox(:get, '/summary')
-      assert_equal({ 'open' => 4, 'unassigned' => 1, 'unread' => 2 }, body['data'])
+      assert_equal({ 'open' => 4, 'unassigned' => 1, 'unread' => 2, 'me' => { 'id' => @admin.id.to_s, 'email' => @admin.email } }, body['data'])
       assert_equal [4, 1, 2], body.values_at('open', 'unassigned', 'unread')
     end
   end

@@ -76,6 +76,8 @@ module SpreeAdminNative
       # for clients that read the badge numbers directly.
       def summary
         counts = Inbox.summary_json(adapter_call(:summary, current_admin))
+        # Who "me" is, so the app can tell which conversations are assigned to the signed-in admin.
+        counts = counts.merge(me: { id: current_admin.id.to_s, email: current_admin.try(:email) })
         render json: { data: counts }.merge(counts)
       end
 
@@ -124,7 +126,11 @@ module SpreeAdminNative
             fields['status'] = ["must be one of #{Inbox::STATUSES.join(', ')}"]
           end
         end
-        attrs[:assignee_id] = params[:assignee_id].presence&.to_s if params.key?(:assignee_id)
+        if params.key?(:assignee_id)
+          # 'me' is the signed-in admin, as in the list's assignee filter; the app doesn't know its id.
+          assignee = params[:assignee_id].presence&.to_s
+          attrs[:assignee_id] = assignee == 'me' ? current_admin.id.to_s : assignee
+        end
         if params.key?(:snoozed_until)
           if params[:snoozed_until].blank?
             attrs[:snoozed_until] = nil
